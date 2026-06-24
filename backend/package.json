@@ -8,8 +8,8 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "render:build": "NPM_CONFIG_PRODUCTION=false npm install --legacy-peer-deps && cd apps/backend && npx medusa build --lint false",
-    "render:start": "cd apps/backend/.medusa/server && NPM_CONFIG_PRODUCTION=false npm install --legacy-peer-deps && npm run predeploy && npm run start",
+    "render:build": "NPM_CONFIG_PRODUCTION=false npm install --legacy-peer-deps && cd apps/backend && npx medusa build --lint false && bash scripts/render-prepare-server.sh",
+    "render:start": "cd apps/backend/.medusa/server && npm run predeploy && npm run start",
     "start": "turbo start",
     "lint": "turbo lint",
     "test": "turbo test",
