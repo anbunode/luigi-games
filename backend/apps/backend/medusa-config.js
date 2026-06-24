@@ -13,4 +13,7 @@ module.exports = defineConfig({
       cookieSecret: process.env.COOKIE_SECRET,
     },
   },
+  admin: {
+    backendUrl: process.env.MEDUSA_BACKEND_URL,
+  },
 })
