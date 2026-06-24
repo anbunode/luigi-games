@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "luigigame.com" },
       { protocol: "https", hostname: "www.luigigame.com" },
       { protocol: "https", hostname: "api.luigigame.com" },
+      { protocol: "https", hostname: "luigi-games-api1.onrender.com" },
+      { protocol: "https", hostname: "*.netlify.app" },
       { protocol: "https", hostname: "*.supabase.co" },
     ],
   },

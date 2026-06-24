@@ -25,6 +25,6 @@ services:
       - key: STORE_CORS
         value: https://luigigame.com,https://www.luigigame.com,https://strong-cascaron-2e0511.netlify.app
       - key: ADMIN_CORS
-        value: https://api.luigigame.com
+        value: https://api.luigigame.com,https://luigi-games-api1.onrender.com
       - key: AUTH_CORS
         value: https://luigigame.com,https://www.luigigame.com,https://api.luigigame.com,https://strong-cascaron-2e0511.netlify.app
