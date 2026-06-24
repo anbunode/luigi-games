@@ -9,6 +9,8 @@ const StorefrontTheme = model.define("storefront_theme", {
   hero_badge: model.text(),
   hero_cta_label: model.text(),
   hero_cta_url: model.text(),
+  main_banner_image_url: model.text(),
+  main_banner_product_handle: model.text(),
   promo_title: model.text(),
   promo_cta_label: model.text(),
   promo_cta_url: model.text(),

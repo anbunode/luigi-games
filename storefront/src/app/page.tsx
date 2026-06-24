@@ -21,7 +21,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <HeroSection recommended={recommended} theme={theme} />
+      <HeroSection recommended={recommended} />
       {theme.show_promo_banner ? <PromoBanner theme={theme} /> : null}
       {theme.show_bestsellers ? (
         <BestsellersSection products={bestsellers} />

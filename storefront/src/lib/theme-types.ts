@@ -6,6 +6,8 @@ export type StorefrontTheme = {
   hero_badge: string
   hero_cta_label: string
   hero_cta_url: string
+  main_banner_image_url: string
+  main_banner_product_handle: string
   promo_title: string
   promo_cta_label: string
   promo_cta_url: string
@@ -27,6 +29,8 @@ export const defaultStorefrontTheme: StorefrontTheme = {
   hero_badge: "Productos de ejemplo",
   hero_cta_label: "Ver catálogo",
   hero_cta_url: "/search",
+  main_banner_image_url: "",
+  main_banner_product_handle: "producto-1",
   promo_title: "Sección promocional\nde ejemplo",
   promo_cta_label: "Explorar",
   promo_cta_url: "/search",

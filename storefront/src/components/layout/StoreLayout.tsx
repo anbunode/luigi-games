@@ -12,7 +12,10 @@ export async function StoreLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <ThemeVariables theme={theme} />
-      <TopBanner />
+      <TopBanner
+        imageUrl={theme.main_banner_image_url}
+        productHandle={theme.main_banner_product_handle}
+      />
       <Header storeName={theme.store_name} />
       <SubNav />
       <main className="flex-1">{children}</main>

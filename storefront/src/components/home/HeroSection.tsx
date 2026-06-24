@@ -1,22 +1,13 @@
 import Link from "next/link"
 import { ProductCardRecommended } from "@/components/products/ProductCardRecommended"
-import type { StorefrontTheme } from "@/lib/theme-types"
 import { SideBanner } from "./SideBanner"
 import type { Product } from "@/lib/mock-data"
 
 interface HeroSectionProps {
   recommended: Product[]
-  theme: Pick<
-    StorefrontTheme,
-    | "hero_title"
-    | "hero_subtitle"
-    | "hero_badge"
-    | "hero_cta_label"
-    | "hero_cta_url"
-  >
 }
 
-export function HeroSection({ recommended, theme }: HeroSectionProps) {
+export function HeroSection({ recommended }: HeroSectionProps) {
   return (
     <section className="mx-auto max-w-[1440px] px-4 py-6">
       <div className="flex gap-4">
@@ -32,19 +23,16 @@ export function HeroSection({ recommended, theme }: HeroSectionProps) {
                 <div className="relative aspect-[16/9] bg-gradient-to-br from-bg-secondary via-card to-bg">
                   <div className="absolute inset-0 flex flex-col items-center justify-end bg-gradient-to-t from-bg via-bg/60 to-transparent p-6 text-center">
                     <p className="text-2xl font-black uppercase tracking-wide text-text md:text-3xl">
-                      {theme.hero_title}
+                      Sección destacada
                     </p>
                     <p className="mt-1 text-sm font-medium uppercase text-accent">
-                      {theme.hero_subtitle}
-                    </p>
-                    <p className="mt-2 text-xs text-text-secondary">
-                      {theme.hero_badge}
+                      Contenido de ejemplo
                     </p>
                     <Link
-                      href={theme.hero_cta_url || "/search"}
+                      href="/search"
                       className="mt-4 rounded-full bg-accent px-8 py-2.5 text-sm font-bold uppercase text-bg transition-colors hover:bg-accent-hover"
                     >
-                      {theme.hero_cta_label}
+                      Ver catálogo
                     </Link>
                   </div>
                 </div>
