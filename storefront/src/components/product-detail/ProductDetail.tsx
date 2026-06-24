@@ -2,15 +2,13 @@
 
 import { useState } from "react"
 import {
-  ChevronLeft,
-  ChevronRight,
   Globe,
   Heart,
-  Play,
   Share2,
   Star,
 } from "lucide-react"
 import type { Product } from "@/lib/mock-data"
+import { ProductThumbnail } from "@/components/products/ProductThumbnail"
 import { SideBanner } from "@/components/home/SideBanner"
 
 interface ProductGalleryProps {
@@ -74,26 +72,7 @@ export function ProductGallery({ product }: ProductGalleryProps) {
         </div>
 
         <div className="relative mb-6 aspect-video overflow-hidden rounded-xl bg-bg-secondary">
-          <div className="flex h-full items-center justify-center">
-            <button
-              type="button"
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-accent/90 text-bg transition-transform hover:scale-105"
-            >
-              <Play className="h-6 w-6 fill-current" />
-            </button>
-          </div>
-          <button
-            type="button"
-            className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-bg/60 p-2 text-text backdrop-blur-sm"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-bg/60 p-2 text-text backdrop-blur-sm"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
+          <ProductThumbnail title={product.title} imageUrl={product.imageUrl} />
         </div>
 
         <div className="mb-4">

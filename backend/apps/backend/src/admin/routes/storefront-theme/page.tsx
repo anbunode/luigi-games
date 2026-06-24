@@ -341,9 +341,9 @@ const StorefrontThemePage = () => {
 }
 
 export const config = defineRouteConfig({
-  label: "Tema",
+  label: "Tema de la tienda",
   icon: Swatch,
-  rank: 20,
+  rank: 5,
 })
 
 export default StorefrontThemePage

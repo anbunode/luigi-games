@@ -20,15 +20,15 @@ export type StorefrontTheme = {
 }
 
 export const defaultStorefrontTheme: StorefrontTheme = {
-  store_name: "Luigi Games",
+  store_name: "Mi Tienda",
   accent_color: "#10B981",
-  hero_title: "More than just a race",
-  hero_subtitle: "Tune. Collect. Drive your way.",
-  hero_badge: "Up to 34% off",
-  hero_cta_label: "Buy now",
+  hero_title: "Bienvenido a tu tienda",
+  hero_subtitle: "Edita este banner desde el panel",
+  hero_badge: "Productos de ejemplo",
+  hero_cta_label: "Ver catálogo",
   hero_cta_url: "/search",
-  promo_title: "Football summer\nstarts here",
-  promo_cta_label: "Enter the fan zone",
+  promo_title: "Sección promocional\nde ejemplo",
+  promo_cta_label: "Explorar",
   promo_cta_url: "/search",
   show_promo_banner: true,
   show_bestsellers: true,

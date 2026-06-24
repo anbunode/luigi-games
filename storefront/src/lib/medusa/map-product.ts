@@ -42,8 +42,12 @@ export function mapMedusaProduct(product: HttpTypes.StoreProduct): Product {
     handle: product.handle || product.id,
     title: product.title || "Untitled",
     type: parseProductType(meta.product_type),
-    platform: meta.platform || "Steam",
+    platform: meta.platform || "Demo",
     region: meta.region || "Global",
+    imageUrl:
+      product.thumbnail ||
+      product.images?.[0]?.url ||
+      "/placeholder-product.svg",
     genres,
     price,
     originalPrice,

@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Gamepad2, Globe } from "lucide-react"
 import type { Product } from "@/lib/mock-data"
+import { ProductThumbnail } from "./ProductThumbnail"
 
 function formatPrice(price: number) {
   return `€${price.toFixed(2)}`
@@ -17,9 +18,11 @@ export function ProductCardRecommended({ product }: ProductCardRecommendedProps)
       className="group flex flex-col overflow-hidden rounded-xl bg-card shadow-lg transition-all hover:bg-card-hover"
     >
       <div className="relative aspect-square bg-bg-secondary">
-        <div className="flex h-full items-center justify-center">
-          <Gamepad2 className="h-10 w-10 text-text-muted/30 group-hover:text-accent/30" />
-        </div>
+        <ProductThumbnail
+          title={product.title}
+          imageUrl={product.imageUrl}
+          iconClassName="h-10 w-10"
+        />
       </div>
 
       <div className="p-2.5">

@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Heart, Gamepad2, Globe } from "lucide-react"
 import type { Product } from "@/lib/mock-data"
+import { ProductThumbnail } from "./ProductThumbnail"
 
 function formatPrice(price: number) {
   return `€${price.toFixed(2)}`
@@ -32,9 +33,11 @@ export function ProductCardList({
         href={`/products/${product.handle}`}
         className="relative h-24 w-36 shrink-0 overflow-hidden rounded-lg bg-bg-secondary"
       >
-        <div className="flex h-full items-center justify-center">
-          <Gamepad2 className="h-8 w-8 text-text-muted/30" />
-        </div>
+        <ProductThumbnail
+          title={product.title}
+          imageUrl={product.imageUrl}
+          iconClassName="h-8 w-8"
+        />
       </Link>
 
       <div className="flex min-w-0 flex-1 flex-col justify-center">

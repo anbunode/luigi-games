@@ -52,7 +52,7 @@ export async function listProducts(options?: {
         region_id: region.id,
         q: options?.q,
         fields:
-          "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags",
+          "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags,+thumbnail",
       },
       cache: "no-store",
     })
@@ -95,7 +95,7 @@ export async function getProductByHandle(
         limit: 1,
         region_id: region.id,
         fields:
-          "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags",
+          "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags,+thumbnail",
       },
       cache: "no-store",
     })
