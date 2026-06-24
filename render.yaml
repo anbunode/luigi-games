@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: luigi-games-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: AUTH_MFA_ENCRYPTION_KEY
+        generateValue: true
+      - key: STORE_CORS
+        value: https://luigigame.com,https://www.luigigame.com
+      - key: ADMIN_CORS
+        value: https://api.luigigame.com
+      - key: AUTH_CORS
+        value: https://luigigame.com,https://www.luigigame.com,https://api.luigigame.com

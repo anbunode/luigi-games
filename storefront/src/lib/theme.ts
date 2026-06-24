@@ -1,0 +1,21 @@
+export const theme = {
+  tenant: "luigi-games",
+  name: "Luigi Games",
+  colors: {
+    bg: "#0B0F19",
+    bgSecondary: "#131A2B",
+    card: "#1E293B",
+    cardHover: "#253045",
+    border: "rgba(255,255,255,0.08)",
+    accent: "#10B981",
+    accentHover: "#059669",
+    accentMuted: "rgba(16,185,129,0.16)",
+    pass: "#FBBF24",
+    passHover: "#F59E0B",
+    text: "#F8FAFC",
+    textSecondary: "#94A3B8",
+    textMuted: "#64748B",
+    discount: "#22C55E",
+    priceBar: "#10B981",
+  },
+} as const

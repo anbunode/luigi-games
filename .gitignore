@@ -1,0 +1,33 @@
+# Secrets & local env
+.env
+.env.local
+.env.*.local
+!.env.example
+!.env.production.example
+*.pem
+.medusa-key.tmp
+supacceso.txt
+
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+dist/
+.turbo/
+.medusa/
+
+# Test / scratch
+test-clone/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
