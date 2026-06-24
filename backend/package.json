@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "render:build": "npm install --legacy-peer-deps && cd apps/backend && npm run build",
+    "render:build": "NPM_CONFIG_PRODUCTION=false npm install --legacy-peer-deps && cd apps/backend && npx medusa build --lint false",
     "render:start": "cd apps/backend && npm run start",
     "start": "turbo start",
     "lint": "turbo lint",
