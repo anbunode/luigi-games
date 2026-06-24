@@ -4,8 +4,8 @@ services:
     runtime: node
     plan: free
     rootDir: backend
-    buildCommand: npm install --legacy-peer-deps && cd apps/backend && npm run build
-    startCommand: cd apps/backend && npm run start
+    buildCommand: npm run render:build
+    startCommand: npm run render:start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
