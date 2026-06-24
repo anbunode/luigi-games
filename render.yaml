@@ -1,17 +1,18 @@
 services:
   - type: web
     name: luigi-games-api
-    runtime: docker
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    runtime: node
     plan: free
+    rootDir: backend
+    buildCommand: npm install --legacy-peer-deps && cd apps/backend && npm run build
+    startCommand: cd apps/backend && npm run start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: "20"
       - key: DATABASE_URL
-        sync: false
-      - key: REDIS_URL
         sync: false
       - key: JWT_SECRET
         generateValue: true
@@ -20,8 +21,8 @@ services:
       - key: AUTH_MFA_ENCRYPTION_KEY
         generateValue: true
       - key: STORE_CORS
-        value: https://luigigame.com,https://www.luigigame.com
+        value: https://luigigame.com,https://www.luigigame.com,https://strong-cascaron-2e0511.netlify.app
       - key: ADMIN_CORS
         value: https://api.luigigame.com
       - key: AUTH_CORS
-        value: https://luigigame.com,https://www.luigigame.com,https://api.luigigame.com
+        value: https://luigigame.com,https://www.luigigame.com,https://api.luigigame.com,https://strong-cascaron-2e0511.netlify.app

@@ -1,12 +1,12 @@
 # Luigi Games — Medusa backend (monorepo)
 FROM node:20-alpine AS base
 WORKDIR /app
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat wget
 
 FROM base AS deps
 COPY package.json package-lock.json turbo.json .npmrc ./
 COPY apps/backend/package.json ./apps/backend/
-RUN npm ci --legacy-peer-deps --omit=dev
+RUN npm ci --legacy-peer-deps
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
@@ -25,7 +25,7 @@ COPY --from=builder /app/package.json /app/package.json
 EXPOSE 9000
 ENV PORT=9000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
   CMD wget -qO- http://localhost:9000/health || exit 1
 
 CMD ["npm", "run", "start"]
