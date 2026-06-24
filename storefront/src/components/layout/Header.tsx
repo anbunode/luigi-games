@@ -6,7 +6,9 @@ import {
   User,
 } from "lucide-react"
 
-export function Header() {
+export function Header({ storeName = "Luigi Games" }: { storeName?: string }) {
+  const label = storeName.toUpperCase()
+
   return (
     <header className="sticky top-0 z-50 border-b border-white/8 bg-bg-secondary">
       <div className="mx-auto flex max-w-[1440px] items-center gap-4 px-4 py-3">
@@ -15,7 +17,7 @@ export function Header() {
             <span className="text-lg font-black text-accent">LG</span>
           </div>
           <span className="hidden text-lg font-bold tracking-tight text-text sm:block">
-            LUIGI GAMES
+            {label}
           </span>
         </Link>
 

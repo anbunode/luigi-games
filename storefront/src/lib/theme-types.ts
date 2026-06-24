@@ -1,0 +1,41 @@
+export type StorefrontTheme = {
+  store_name: string
+  accent_color: string
+  hero_title: string
+  hero_subtitle: string
+  hero_badge: string
+  hero_cta_label: string
+  hero_cta_url: string
+  promo_title: string
+  promo_cta_label: string
+  promo_cta_url: string
+  show_promo_banner: boolean
+  show_bestsellers: boolean
+  show_featured_deals: boolean
+  show_hero_carousel: boolean
+  show_category_pills: boolean
+  show_product_list: boolean
+  show_genre_grid: boolean
+  storefront_preview_url: string
+}
+
+export const defaultStorefrontTheme: StorefrontTheme = {
+  store_name: "Luigi Games",
+  accent_color: "#10B981",
+  hero_title: "More than just a race",
+  hero_subtitle: "Tune. Collect. Drive your way.",
+  hero_badge: "Up to 34% off",
+  hero_cta_label: "Buy now",
+  hero_cta_url: "/search",
+  promo_title: "Football summer\nstarts here",
+  promo_cta_label: "Enter the fan zone",
+  promo_cta_url: "/search",
+  show_promo_banner: true,
+  show_bestsellers: true,
+  show_featured_deals: true,
+  show_hero_carousel: true,
+  show_category_pills: true,
+  show_product_list: true,
+  show_genre_grid: true,
+  storefront_preview_url: "https://strong-cascaron-2e0511.netlify.app",
+}

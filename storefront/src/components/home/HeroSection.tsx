@@ -1,12 +1,22 @@
+import Link from "next/link"
 import { ProductCardRecommended } from "@/components/products/ProductCardRecommended"
+import type { StorefrontTheme } from "@/lib/theme-types"
 import { SideBanner } from "./SideBanner"
 import type { Product } from "@/lib/mock-data"
 
 interface HeroSectionProps {
   recommended: Product[]
+  theme: Pick<
+    StorefrontTheme,
+    | "hero_title"
+    | "hero_subtitle"
+    | "hero_badge"
+    | "hero_cta_label"
+    | "hero_cta_url"
+  >
 }
 
-export function HeroSection({ recommended }: HeroSectionProps) {
+export function HeroSection({ recommended, theme }: HeroSectionProps) {
   return (
     <section className="mx-auto max-w-[1440px] px-4 py-6">
       <div className="flex gap-4">
@@ -22,20 +32,20 @@ export function HeroSection({ recommended }: HeroSectionProps) {
                 <div className="relative aspect-[16/9] bg-gradient-to-br from-bg-secondary via-card to-bg">
                   <div className="absolute inset-0 flex flex-col items-center justify-end bg-gradient-to-t from-bg via-bg/60 to-transparent p-6 text-center">
                     <p className="text-2xl font-black uppercase tracking-wide text-text md:text-3xl">
-                      More than just a race
+                      {theme.hero_title}
                     </p>
                     <p className="mt-1 text-sm font-medium uppercase text-accent">
-                      Tune. Collect. Drive your way.
+                      {theme.hero_subtitle}
                     </p>
                     <p className="mt-2 text-xs text-text-secondary">
-                      Up to 34% off
+                      {theme.hero_badge}
                     </p>
-                    <button
-                      type="button"
+                    <Link
+                      href={theme.hero_cta_url || "/search"}
                       className="mt-4 rounded-full bg-accent px-8 py-2.5 text-sm font-bold uppercase text-bg transition-colors hover:bg-accent-hover"
                     >
-                      Buy now
-                    </button>
+                      {theme.hero_cta_label}
+                    </Link>
                   </div>
                 </div>
               </div>

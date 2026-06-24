@@ -6,9 +6,13 @@ import { CategoryPills } from "@/components/home/CategoryPills"
 import { ProductListSection } from "@/components/home/ProductListSection"
 import { GenreGrid } from "@/components/home/GenreGrid"
 import { listProducts } from "@/lib/medusa/products"
+import { getStorefrontTheme } from "@/lib/medusa/theme"
 
 export default async function HomePage() {
-  const catalog = await listProducts({ limit: 24 })
+  const [catalog, theme] = await Promise.all([
+    listProducts({ limit: 24 }),
+    getStorefrontTheme(),
+  ])
 
   const recommended = catalog.products.slice(0, 4)
   const bestsellers = catalog.products.slice(0, 12)
@@ -17,14 +21,20 @@ export default async function HomePage() {
 
   return (
     <>
-      <HeroSection recommended={recommended} />
-      <PromoBanner />
-      <BestsellersSection products={bestsellers} />
-      <BestsellersSection title="Featured deals" products={featured} />
-      <HeroCarousel />
-      <CategoryPills />
-      <ProductListSection products={listItems} />
-      <GenreGrid />
+      <HeroSection recommended={recommended} theme={theme} />
+      {theme.show_promo_banner ? <PromoBanner theme={theme} /> : null}
+      {theme.show_bestsellers ? (
+        <BestsellersSection products={bestsellers} />
+      ) : null}
+      {theme.show_featured_deals ? (
+        <BestsellersSection title="Featured deals" products={featured} />
+      ) : null}
+      {theme.show_hero_carousel ? <HeroCarousel /> : null}
+      {theme.show_category_pills ? <CategoryPills /> : null}
+      {theme.show_product_list ? (
+        <ProductListSection products={listItems} />
+      ) : null}
+      {theme.show_genre_grid ? <GenreGrid /> : null}
     </>
   )
 }
