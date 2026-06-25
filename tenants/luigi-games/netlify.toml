@@ -1,0 +1,21 @@
+# Luigi Games — tenant cliente de SkrepayShop
+# Despliega este directorio como sitio Netlify separado (o conecta luigigame.com)
+
+[build]
+  base = "tenants/luigi-games"
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NEXT_PUBLIC_TENANT_ID = "luigi-games"
+  NEXT_PUBLIC_MEDUSA_BACKEND_URL = "https://luigi-games-api1.onrender.com"
+  NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY = "pk_12c9646e8e9de4fc5aace4a45674ed2257e690f17351cbf33d4321ebfb3edd66"
+  NEXT_PUBLIC_BASE_URL = "https://luigi-games-store.netlify.app"
+  NEXT_PUBLIC_SITE_URL = "https://luigigame.com"
+  NEXT_PUBLIC_PLATFORM_URL = "https://strong-cascaron-2e0511.netlify.app"
+  NEXT_PUBLIC_DEFAULT_REGION = "es"
+  NEXT_PUBLIC_USE_MOCK_DATA = "false"

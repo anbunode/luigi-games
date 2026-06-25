@@ -1,0 +1,41 @@
+{
+  "name": "skrepayshop-api",
+  "private": false,
+  "packageManager": "npm@11.12.1",
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "render:build": "NPM_CONFIG_PRODUCTION=false npm install --legacy-peer-deps && cd apps/backend && npx medusa build --lint false && cd ../.. && bash scripts/render-prepare-server.sh",
+    "render:start": "cd apps/backend/.medusa/server && npm run predeploy && npm run start",
+    "start": "turbo start",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "backend:seed": "turbo seed --filter=@dtc/backend",
+    "backend:shell-reset": "npm run shell-reset --workspace=@dtc/backend",
+    "backend:dev": "turbo dev --filter=@dtc/backend",
+    "storefront:dev": "turbo dev --filter=@dtc/storefront"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "19.0.5",
+      "@types/react-dom": "19.0.5"
+    }
+  },
+  "devDependencies": {
+    "@medusajs/eslint-plugin": "2.16.0",
+    "eslint": "^9.39.4",
+    "jiti": "^2.7.0",
+    "prettier": "^3.2.5",
+    "turbo": "^2.0.14"
+  },
+  "workspaces": [
+    "apps/**",
+    "!apps/backend/.medusa/**"
+  ],
+  "overrides": {
+    "ajv": "^8.0.0"
+  }
+}
