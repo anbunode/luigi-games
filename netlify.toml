@@ -1,6 +1,5 @@
 # SkrepayShop — plataforma oficial (lobby + login)
-# Dominio futuro: https://skrepay.com
-# Actual: https://strong-cascaron-2e0511.netlify.app
+# Producción temporal: strong-cascaron | Dominio: skrepay.com
 
 [build]
   base = "skrepayshop-platform"
@@ -13,9 +12,11 @@
 [build.environment]
   NODE_VERSION = "20"
   NEXT_PUBLIC_PLATFORM_NAME = "SkrepayShop"
-  NEXT_PUBLIC_PLATFORM_URL = "https://strong-cascaron-2e0511.netlify.app"
-  NEXT_PUBLIC_ADMIN_URL = "https://luigi-games-api1.onrender.com/app"
-  NEXT_PUBLIC_MEDUSA_BACKEND_URL = "https://luigi-games-api1.onrender.com"
+  NEXT_PUBLIC_PLATFORM_URL = "https://skrepay.com"
+  NEXT_PUBLIC_PANEL_URL = "https://app.skrepay.com"
+  # Origen real del API/admin hasta que api.skrepay.com apunte a Render:
+  NEXT_PUBLIC_ADMIN_ORIGIN = "https://luigi-games-api1.onrender.com"
   MEDUSA_BACKEND_URL = "https://luigi-games-api1.onrender.com"
-  NEXT_PUBLIC_DEMO_STORE_URL = "https://luigi-games-store.netlify.app"
-  NEXT_PUBLIC_FUTURE_DOMAIN = "https://skrepay.com"
+  NEXT_PUBLIC_TENANT_STORE_BASE = "skrepay.shop"
+  NEXT_PUBLIC_PAYMENT_LINK_BASE = "pay.skrepay.com"
+  NEXT_PUBLIC_DEMO_STORE_URL = "https://luigi-games.skrepay.shop"

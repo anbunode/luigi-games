@@ -33,4 +33,6 @@ services:
       - key: MEDUSA_BACKEND_URL
         value: https://luigi-games-api1.onrender.com
       - key: PLATFORM_URL
-        value: https://strong-cascaron-2e0511.netlify.app
+        value: https://skrepay.com
+      - key: SKREPAY_PUBLIC_API_URL
+        value: https://api.skrepay.com

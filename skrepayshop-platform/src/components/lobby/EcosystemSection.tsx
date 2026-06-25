@@ -70,15 +70,28 @@ export function EcosystemSection() {
         </div>
 
         <div className="mt-10 rounded-3xl border border-line bg-white p-6 text-sm text-ink-muted">
-          Panel SkrepayShop (Medusa):{" "}
-          <a
-            href={platformConfig.adminUrl}
-            className="font-medium text-brand hover:underline"
-            target="_blank"
-            rel="noreferrer"
-          >
-            {platformConfig.adminUrl}
-          </a>
+          <p>
+            <span className="font-medium text-ink">Panel comerciante:</span>{" "}
+            <a
+              href={platformConfig.panelUrl}
+              className="text-brand hover:underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {platformConfig.panelUrl}
+            </a>
+          </p>
+          <p className="mt-2">
+            <span className="font-medium text-ink">Tienda demo (tenant):</span>{" "}
+            <a
+              href={platformConfig.demoStoreUrl}
+              className="text-brand hover:underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {platformConfig.demoStoreUrl}
+            </a>
+          </p>
         </div>
       </div>
     </section>

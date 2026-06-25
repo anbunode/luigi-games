@@ -1,0 +1,9 @@
+{
+  "name": "skrepayshop-api-render-shim",
+  "private": true,
+  "description": "Compatibilidad Render: si el servicio aún usa Root Directory 'backend', delega a skrepayshop-api.",
+  "scripts": {
+    "render:build": "cd ../skrepayshop-api && npm run render:build",
+    "render:start": "cd ../skrepayshop-api && npm run render:start"
+  }
+}

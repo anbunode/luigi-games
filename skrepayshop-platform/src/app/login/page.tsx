@@ -75,14 +75,15 @@ export default function LoginPage() {
           </div>
 
           <p className="mt-6 text-center text-xs text-ink-muted">
-            Al continuar accedes al panel en{" "}
+            Tras iniciar sesión entras al{" "}
+            <span className="font-medium text-ink">Panel SkrepayShop</span> en{" "}
             <a
-              href={platformConfig.adminUrl}
+              href={platformConfig.panelUrl}
               className="text-brand hover:underline"
               target="_blank"
               rel="noreferrer"
             >
-              {platformConfig.adminUrl}
+              {platformConfig.panelUrl}
             </a>
           </p>
         </div>

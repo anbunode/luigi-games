@@ -37,8 +37,14 @@ supabase/                 → Postgres (datos compartidos + scrapers)
 
 ### Render — API
 
-- `render.yaml` → `skrepayshop-api/`
-- Base de datos: **Supabase** (`DATABASE_URL`)
+- Carpeta: `skrepayshop-api/` (o `backend/` shim si no cambiaste Root Directory)
+- URL técnica actual: `https://luigi-games-api1.onrender.com`
+- URL pública objetivo: `https://api.skrepay.com` (CNAME en DNS)
+- Panel objetivo: `https://app.skrepay.com`
+
+Si el deploy falla con *Root directory backend does not exist*, usa Root Directory `skrepayshop-api` o el shim en `backend/`.
+
+Ver [docs/URL-ARCHITECTURE.md](docs/URL-ARCHITECTURE.md) para dominios, tenants y links de pago.
 
 ## Login
 
