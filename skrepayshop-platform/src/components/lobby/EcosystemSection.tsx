@@ -82,15 +82,10 @@ export function EcosystemSection() {
             </a>
           </p>
           <p className="mt-2">
-            <span className="font-medium text-ink">Tienda demo (tenant):</span>{" "}
-            <a
-              href={platformConfig.demoStoreUrl}
-              className="text-brand hover:underline"
-              target="_blank"
-              rel="noreferrer"
-            >
-              {platformConfig.demoStoreUrl}
-            </a>
+            <span className="font-medium text-ink">Acceso directo:</span>{" "}
+            <Link href="/panel" className="text-brand hover:underline">
+              {platformConfig.panelUrl}
+            </Link>
           </p>
         </div>
       </div>

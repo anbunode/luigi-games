@@ -64,7 +64,7 @@ export const platformConfig = {
   backendUrl: skrepayUrls.api,
   demoStoreUrl:
     process.env.NEXT_PUBLIC_DEMO_STORE_URL ||
-    skrepayUrls.tenantStoreUrl("luigi-games"),
+    skrepayUrls.tenantStoreUrl("demo"),
   heroVideo:
     process.env.NEXT_PUBLIC_HERO_VIDEO_URL ||
     "https://cdn.coverr.co/videos/coverr-team-meeting-in-modern-office-9745/1080p.mp4",

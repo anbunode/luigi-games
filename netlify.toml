@@ -1,5 +1,5 @@
-# SkrepayShop — plataforma oficial (lobby + login)
-# Producción temporal: strong-cascaron | Dominio: skrepay.com
+# SkrepayShop — Netlify (cuenta principal)
+# Sustituye TU-SERVICIO.onrender.com por tu API Render con DATABASE_URL configurada
 
 [build]
   base = "skrepayshop-platform"
@@ -14,9 +14,9 @@
   NEXT_PUBLIC_PLATFORM_NAME = "SkrepayShop"
   NEXT_PUBLIC_PLATFORM_URL = "https://skrepay.com"
   NEXT_PUBLIC_PANEL_URL = "https://app.skrepay.com"
-  # Origen real del API/admin hasta que api.skrepay.com apunte a Render:
-  NEXT_PUBLIC_ADMIN_ORIGIN = "https://luigi-games-api1.onrender.com"
-  MEDUSA_BACKEND_URL = "https://luigi-games-api1.onrender.com"
   NEXT_PUBLIC_TENANT_STORE_BASE = "skrepay.shop"
   NEXT_PUBLIC_PAYMENT_LINK_BASE = "pay.skrepay.com"
-  NEXT_PUBLIC_DEMO_STORE_URL = "https://luigi-games.skrepay.shop"
+  NEXT_PUBLIC_DEMO_STORE_URL = "https://demo.skrepay.shop"
+
+# MEDUSA_BACKEND_URL y NEXT_PUBLIC_ADMIN_ORIGIN → configurar en Netlify UI
+# (no commitear URLs Render concretas; cada entorno las define)

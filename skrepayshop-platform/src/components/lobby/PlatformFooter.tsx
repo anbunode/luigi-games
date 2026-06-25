@@ -24,12 +24,10 @@ export function PlatformFooter() {
             Tienda demo
           </a>
           <a
-            href={platformConfig.adminUrl}
-            target="_blank"
-            rel="noreferrer"
+            href="/panel"
             className="hover:text-ink"
           >
-            Panel oficial
+            Panel
           </a>
         </div>
       </div>

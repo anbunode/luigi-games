@@ -47,12 +47,10 @@ export function VideoHero() {
               <ArrowRight className="h-4 w-4" />
             </Link>
             <a
-              href={platformConfig.demoStoreUrl}
-              target="_blank"
-              rel="noreferrer"
+              href="#planes"
               className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-6 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/15"
             >
-              Ver tienda demo
+              Ver planes
             </a>
           </div>
 

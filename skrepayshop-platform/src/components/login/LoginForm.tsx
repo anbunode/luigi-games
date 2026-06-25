@@ -10,6 +10,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [redirecting, setRedirecting] = useState(false)
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -29,16 +30,30 @@ export function LoginForm() {
         throw new Error(data.message || "No se pudo iniciar sesión.")
       }
 
-      window.location.href = data.redirectUrl || platformConfig.adminUrl
+      const target = data.redirectUrl || platformConfig.adminUrl
+
+      setRedirecting(true)
+      window.location.replace(target)
     } catch (submitError) {
       setError(
         submitError instanceof Error
           ? submitError.message
           : "No se pudo iniciar sesión."
       )
-    } finally {
       setLoading(false)
     }
+  }
+
+  if (redirecting) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-8 text-center">
+        <LoaderCircle className="h-8 w-8 animate-spin text-brand" />
+        <p className="text-sm font-medium text-ink">
+          Acceso correcto. Abriendo tu panel…
+        </p>
+        <p className="text-xs text-ink-muted">{platformConfig.panelUrl}</p>
+      </div>
+    )
   }
 
   return (
@@ -93,13 +108,13 @@ export function LoginForm() {
         className="flex w-full items-center justify-center gap-2 rounded-full bg-brand px-5 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
       >
         {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-        Iniciar sesión
+        Entrar al panel
       </button>
 
       <p className="text-center text-sm text-ink-muted">
-        ¿Primera vez aquí?{" "}
+        ¿Primera vez?{" "}
         <Link href="/login" className="font-medium text-brand hover:underline">
-          Crea tu tienda gratis
+          Crea tu cuenta gratis
         </Link>
       </p>
     </form>
