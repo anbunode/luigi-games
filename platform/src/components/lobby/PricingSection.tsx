@@ -20,11 +20,14 @@ export function PricingSection() {
         </div>
 
         <div className="mt-14 grid gap-6 lg:grid-cols-3">
-          {plans.map((plan) => (
+          {plans.map((plan) => {
+            const featured = "featured" in plan && plan.featured
+
+            return (
             <article
               key={plan.name}
               className={`rounded-3xl border p-8 ${
-                plan.featured
+                featured
                   ? "border-brand bg-brand text-white shadow-[0_24px_60px_rgba(0,128,96,0.22)]"
                   : "border-line bg-surface-soft"
               }`}
@@ -35,7 +38,7 @@ export function PricingSection() {
               <p className="mt-4 text-4xl font-semibold">{plan.price}</p>
               <p
                 className={`mt-3 text-sm leading-relaxed ${
-                  plan.featured ? "text-white/85" : "text-ink-muted"
+                  featured ? "text-white/85" : "text-ink-muted"
                 }`}
               >
                 {plan.description}
@@ -45,7 +48,7 @@ export function PricingSection() {
                   <li key={item} className="flex items-start gap-3 text-sm">
                     <Check
                       className={`mt-0.5 h-4 w-4 shrink-0 ${
-                        plan.featured ? "text-white" : "text-brand"
+                        featured ? "text-white" : "text-brand"
                       }`}
                     />
                     <span>{item}</span>
@@ -55,7 +58,7 @@ export function PricingSection() {
               <Link
                 href="/login"
                 className={`mt-8 inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition-colors ${
-                  plan.featured
+                  featured
                     ? "bg-white text-brand hover:bg-brand-light"
                     : "bg-brand text-white hover:bg-brand-dark"
                 }`}
@@ -63,7 +66,8 @@ export function PricingSection() {
                 Elegir plan
               </Link>
             </article>
-          ))}
+            )
+          })}
         </div>
       </div>
     </section>
