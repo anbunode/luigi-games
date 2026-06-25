@@ -174,7 +174,11 @@ const StorefrontThemePage = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null)
-        throw new Error(errorData?.message || "No se pudo subir la imagen")
+        const message =
+          errorData?.message ||
+          errorData?.type ||
+          "No se pudo subir la imagen"
+        throw new Error(message)
       }
 
       const data = await response.json()

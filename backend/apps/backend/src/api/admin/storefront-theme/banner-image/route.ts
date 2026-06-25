@@ -1,19 +1,26 @@
-import { createWriteStream } from "fs"
 import { mkdir } from "fs/promises"
 import { join, extname } from "path"
 import { randomUUID } from "crypto"
-import Busboy from "busboy"
+import multer from "multer"
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { MedusaError } from "@medusajs/framework/utils"
 
 const UPLOAD_DIR = join(process.cwd(), "uploads", "storefront-banners")
 const MAX_BYTES = 5 * 1024 * 1024
-const ALLOWED_TYPES = new Set([
+const ALLOWED_MIME = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
   "image/gif",
   "image/svg+xml",
+])
+const ALLOWED_EXT = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".gif",
+  ".svg",
 ])
 
 function getPublicBaseUrl(req: MedusaRequest) {
@@ -23,80 +30,98 @@ function getPublicBaseUrl(req: MedusaRequest) {
   )
 }
 
-export async function POST(req: MedusaRequest, res: MedusaResponse) {
-  await mkdir(UPLOAD_DIR, { recursive: true })
+function isAllowedImage(mimetype: string, originalname: string) {
+  const extension = extname(originalname).toLowerCase()
 
-  const result = await new Promise<{ filename: string; mimeType: string }>(
-    (resolve, reject) => {
-      const busboy = Busboy({
-        headers: req.headers,
-        limits: { fileSize: MAX_BYTES, files: 1 },
-      })
+  return ALLOWED_MIME.has(mimetype) || ALLOWED_EXT.has(extension)
+}
 
-      let savedFile: { filename: string; mimeType: string } | null = null
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: async (_req, _file, cb) => {
+      try {
+        await mkdir(UPLOAD_DIR, { recursive: true })
+        cb(null, UPLOAD_DIR)
+      } catch (error) {
+        cb(error as Error, UPLOAD_DIR)
+      }
+    },
+    filename: (_req, file, cb) => {
+      const extension = extname(file.originalname).toLowerCase() || ".png"
+      cb(null, `${randomUUID()}${extension}`)
+    },
+  }),
+  limits: { fileSize: MAX_BYTES, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    if (!isAllowedImage(file.mimetype, file.originalname)) {
+      cb(
+        new MedusaError(
+          MedusaError.Types.INVALID_DATA,
+          "Formato no permitido. Usa JPG, PNG, WebP, GIF o SVG."
+        )
+      )
+      return
+    }
 
-      busboy.on("file", (fieldname, file, info) => {
-        if (fieldname !== "file") {
-          file.resume()
+    cb(null, true)
+  },
+})
+
+function receiveUploadedFile(
+  req: MedusaRequest,
+  res: MedusaResponse
+): Promise<Express.Multer.File> {
+  return new Promise((resolve, reject) => {
+    upload.single("file")(req, res, (error: unknown) => {
+      if (error) {
+        if (error instanceof MedusaError) {
+          reject(error)
           return
         }
 
-        const mimeType = info.mimeType
-
-        if (!ALLOWED_TYPES.has(mimeType)) {
-          file.resume()
-          reject(
-            new MedusaError(
-              MedusaError.Types.INVALID_DATA,
-              "Formato no permitido. Usa JPG, PNG, WebP, GIF o SVG."
-            )
-          )
-          return
-        }
-
-        const extension = extname(info.filename) || ".jpg"
-        const filename = `${randomUUID()}${extension}`
-        const filepath = join(UPLOAD_DIR, filename)
-        const stream = createWriteStream(filepath)
-
-        file.pipe(stream)
-
-        stream.on("finish", () => {
-          savedFile = { filename, mimeType }
-        })
-
-        stream.on("error", reject)
-        file.on("limit", () => {
+        if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
           reject(
             new MedusaError(
               MedusaError.Types.INVALID_DATA,
               "La imagen supera el límite de 5 MB."
             )
           )
-        })
-      })
-
-      busboy.on("error", reject)
-
-      busboy.on("finish", () => {
-        if (!savedFile) {
-          reject(
-            new MedusaError(
-              MedusaError.Types.INVALID_DATA,
-              "No se recibió ninguna imagen."
-            )
-          )
           return
         }
 
-        resolve(savedFile)
-      })
+        reject(
+          new MedusaError(
+            MedusaError.Types.INVALID_DATA,
+            error instanceof Error
+              ? error.message
+              : "No se pudo procesar la imagen."
+          )
+        )
+        return
+      }
 
-      req.pipe(busboy)
-    }
-  )
+      const file = (req as MedusaRequest & { file?: Express.Multer.File }).file
 
-  const url = `${getPublicBaseUrl(req)}/store/storefront-banner/${result.filename}`
+      if (!file) {
+        reject(
+          new MedusaError(
+            MedusaError.Types.INVALID_DATA,
+            "No se recibió ninguna imagen."
+          )
+        )
+        return
+      }
 
-  res.json({ url, filename: result.filename })
+      resolve(file)
+    })
+  })
 }
+
+export async function POST(req: MedusaRequest, res: MedusaResponse) {
+  const file = await receiveUploadedFile(req, res)
+  const url = `${getPublicBaseUrl(req)}/store/storefront-banner/${file.filename}`
+
+  res.json({ url, filename: file.filename })
+}
+
+export const AUTHENTICATE = true
