@@ -1,5 +1,5 @@
-# SkrepayShop — Netlify (cuenta principal)
-# Sustituye TU-SERVICIO.onrender.com por tu API Render con DATABASE_URL configurada
+# SkrepayShop — skrepay.com (cuenta Netlify oficial)
+# API: https://api.skrepay.com (Render: servicio skrepayshop-api)
 
 [build]
   base = "skrepayshop-platform"
@@ -17,6 +17,8 @@
   NEXT_PUBLIC_TENANT_STORE_BASE = "skrepay.shop"
   NEXT_PUBLIC_PAYMENT_LINK_BASE = "pay.skrepay.com"
   NEXT_PUBLIC_DEMO_STORE_URL = "https://demo.skrepay.shop"
-
-# MEDUSA_BACKEND_URL y NEXT_PUBLIC_ADMIN_ORIGIN → configurar en Netlify UI
-# (no commitear URLs Render concretas; cada entorno las define)
+  # API SkrepayShop (Render). Si api.skrepay.com aún no resuelve, usa temporalmente:
+  # https://skrepayshop-api.onrender.com
+  MEDUSA_BACKEND_URL = "https://api.skrepay.com"
+  NEXT_PUBLIC_ADMIN_ORIGIN = "https://api.skrepay.com"
+  NEXT_PUBLIC_MEDUSA_BACKEND_URL = "https://api.skrepay.com"

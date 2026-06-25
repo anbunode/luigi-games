@@ -2,7 +2,7 @@ services:
   - type: web
     name: skrepayshop-api
     runtime: node
-    plan: free
+    plan: starter
     rootDir: skrepayshop-api
     buildCommand: npm run render:build
     startCommand: npm run render:start
@@ -22,17 +22,15 @@ services:
         generateValue: true
       - key: AUTH_MFA_ENCRYPTION_KEY
         generateValue: true
-      - key: STORE_CORS
-        value: https://skrepay.com,https://www.skrepay.com,https://strong-cascaron-2e0511.netlify.app,https://luigigame.com,https://www.luigigame.com,https://luigi-games-store.netlify.app
-      - key: ADMIN_CORS
-        value: https://skrepay.com,https://www.skrepay.com,https://strong-cascaron-2e0511.netlify.app,https://luigi-games-api1.onrender.com
-      - key: AUTH_CORS
-        value: https://skrepay.com,https://www.skrepay.com,https://strong-cascaron-2e0511.netlify.app,https://luigigame.com,https://www.luigigame.com,https://luigi-games-store.netlify.app,https://luigi-games-api1.onrender.com
-      - key: STOREFRONT_URL
-        value: https://luigigame.com
       - key: MEDUSA_BACKEND_URL
-        value: https://luigi-games-api1.onrender.com
+        value: https://api.skrepay.com
       - key: PLATFORM_URL
         value: https://skrepay.com
-      - key: SKREPAY_PUBLIC_API_URL
-        value: https://api.skrepay.com
+      - key: STORE_CORS
+        value: https://skrepay.com,https://www.skrepay.com,https://app.skrepay.com
+      - key: ADMIN_CORS
+        value: https://skrepay.com,https://www.skrepay.com,https://app.skrepay.com,https://api.skrepay.com
+      - key: AUTH_CORS
+        value: https://skrepay.com,https://www.skrepay.com,https://app.skrepay.com,https://api.skrepay.com
+      - key: STOREFRONT_URL
+        value: https://skrepay.com
