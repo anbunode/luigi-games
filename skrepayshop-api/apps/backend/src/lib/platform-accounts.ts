@@ -1,6 +1,5 @@
 import { createHash, randomInt } from "crypto"
 import { Pool } from "pg"
-import { Modules } from "@medusajs/framework/utils"
 import type { MedusaContainer } from "@medusajs/framework"
 import { createSalesChannelsWorkflow } from "@medusajs/medusa/core-flows"
 import { sendSkrepayEmail, verificationEmailContent } from "./email"
@@ -184,23 +183,47 @@ export async function completeSignup(
     )
   }
 
-  const userModule = container.resolve(Modules.USER)
+  const registerData = (await registerResponse.json().catch(() => ({}))) as {
+    token?: string
+    user?: { id?: string }
+  }
 
-  let userId: string
+  const registrationToken = registerData.token
 
-  try {
-    const user = await userModule.createUsers({
+  if (!registrationToken) {
+    throw new Error("No se recibió token de registro de Medusa.")
+  }
+
+  const createUserResponse = await fetch(`${base}/admin/users`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${registrationToken}`,
+    },
+    body: JSON.stringify({
       email,
       first_name: payload.shopName,
       last_name: "",
-    })
-    userId = user.id
-  } catch {
-    const existing = await userModule.listUsers({ email }, { take: 1 })
-    if (!existing[0]) {
-      throw new Error("No se pudo vincular el usuario de la plataforma.")
-    }
-    userId = existing[0].id
+    }),
+  })
+
+  if (!createUserResponse.ok) {
+    const errorData = await createUserResponse.json().catch(() => ({}))
+    throw new Error(
+      typeof errorData.message === "string"
+        ? errorData.message
+        : "No se pudo vincular la cuenta con el panel."
+    )
+  }
+
+  const createUserData = (await createUserResponse.json().catch(() => ({}))) as {
+    user?: { id?: string }
+  }
+
+  const userId = createUserData.user?.id
+
+  if (!userId) {
+    throw new Error("No se pudo crear el usuario administrador.")
   }
 
   const {

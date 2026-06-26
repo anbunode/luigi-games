@@ -12,11 +12,6 @@ const PlatformAuthBridge = () => {
   useEffect(() => {
     const loginUrl = getPlatformLoginUrl()
 
-    if (window.location.pathname.endsWith("/login")) {
-      window.location.replace(loginUrl)
-      return
-    }
-
     if (window.__skrepayAuthBridgeInstalled) {
       return
     }
@@ -51,13 +46,7 @@ const PlatformAuthBridge = () => {
 }
 
 export const config = defineWidgetConfig({
-  zone: [
-    "login.before",
-    "login.after",
-    "order.list.before",
-    "product.list.before",
-    "store.details.before",
-  ],
+  zone: ["order.list.before", "product.list.before", "store.details.before"],
 })
 
 export default PlatformAuthBridge
