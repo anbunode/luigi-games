@@ -68,7 +68,7 @@ Un merchant puede usar **solo links de pago** sin activar storefront, o tener am
 
 - `skrepayshop_tenants` — registro de cada comerciante
 - Futuro: `skrepayshop_payment_links` — links rápidos
-- Futuro: `skrepayshop_domains` — dominios custom verificados
+- `skrepayshop_store_domains` — dominios custom verificados por tenant
 
 ## DNS recomendado (cuando compres skrepay.com)
 

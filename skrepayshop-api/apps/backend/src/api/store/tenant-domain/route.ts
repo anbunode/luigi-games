@@ -1,8 +1,6 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { getPrimaryStorefrontUrl } from "../../../lib/store-domains"
 import { resolveStoreTenant } from "../../../lib/tenant-context"
-import StorefrontThemeModuleService from "../../../modules/storefront-theme/service"
-import { STOREFRONT_THEME_MODULE } from "../../../modules/storefront-theme"
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const tenant = await resolveStoreTenant(req)
@@ -14,11 +12,11 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
-  const service: StorefrontThemeModuleService = req.scope.resolve(
-    STOREFRONT_THEME_MODULE
-  )
-  const primaryUrl = (await getPrimaryStorefrontUrl(tenant.id)) ?? ""
-  const theme = await service.retrieveSettingsForTenant(tenant.id, primaryUrl)
+  const primary_url = await getPrimaryStorefrontUrl(tenant.id)
 
-  res.json({ theme, primary_url: primaryUrl })
+  res.json({
+    tenant_slug: tenant.slug,
+    primary_url,
+    database_status: tenant.database_status,
+  })
 }

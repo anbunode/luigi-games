@@ -1,5 +1,4 @@
 import { createHash, randomInt } from "crypto"
-import { Pool } from "pg"
 import type { AuthenticationInput } from "@medusajs/framework/types"
 import type { MedusaContainer } from "@medusajs/framework"
 import { Modules } from "@medusajs/framework/utils"
@@ -9,6 +8,8 @@ import {
   setAuthAppMetadataWorkflow,
 } from "@medusajs/medusa/core-flows"
 import { sendSkrepayEmail, verificationEmailContent } from "./email"
+import { getPlatformPool } from "./platform-db"
+import { ensureFreeSubdomain } from "./store-domains"
 
 export type SignupPayload = {
   email: string
@@ -17,16 +18,11 @@ export type SignupPayload = {
   slug: string
 }
 
-let pool: Pool | null = null
+let pool: ReturnType<typeof getPlatformPool> | null = null
 
-function getPool(): Pool {
+function getPool() {
   if (!pool) {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.DATABASE_URL?.includes("localhost")
-        ? undefined
-        : { rejectUnauthorized: false },
-    })
+    pool = getPlatformPool()
   }
   return pool
 }
@@ -278,9 +274,10 @@ export async function completeSignup(
   await db.query(
     `insert into skrepayshop_tenants (
        slug, display_name, owner_email, medusa_user_id, medusa_sales_channel_id,
-       storefront_url, free_subdomain, plan, status, email_verified_at
-     ) values ($1, $2, $3, $4, $5, $6, $7, 'starter', 'active', now())
-     on conflict (slug) do nothing`,
+       storefront_url, free_subdomain, plan, status, email_verified_at, database_status
+     ) values ($1, $2, $3, $4, $5, $6, $7, 'starter', 'active', now(), 'shared')
+     on conflict (slug) do nothing
+     returning id`,
     [
       payload.slug,
       payload.shopName,
@@ -291,6 +288,16 @@ export async function completeSignup(
       `${payload.slug}.skrepay.shop`,
     ]
   )
+
+  const tenantRow = await db.query<{ id: string }>(
+    `select id from skrepayshop_tenants where slug = $1 limit 1`,
+    [payload.slug]
+  )
+  const tenantId = tenantRow.rows[0]?.id
+
+  if (tenantId) {
+    await ensureFreeSubdomain(tenantId, payload.slug)
+  }
 
   await db.query(
     `update skrepayshop_verification_code set consumed_at = now() where id = $1`,

@@ -40,6 +40,14 @@ const migrationSql = readFileSync(
   "utf8"
 )
 
+const domainsSql = readFileSync(
+  resolve(
+    root,
+    "supabase/migrations/20260627120000_skrepayshop_store_domains_and_tenant_db.sql"
+  ),
+  "utf8"
+)
+
 const cleanupSql = `
 do $$
 begin
@@ -83,6 +91,8 @@ async function main() {
     await client.query(urlsSql)
     console.log("Ejecutando migración de cuentas...")
     await client.query(migrationSql)
+    console.log("Ejecutando migración de dominios y BD por tenant...")
+    await client.query(domainsSql)
     console.log("Migración OK.")
 
     console.log("Limpiando datos legacy...")

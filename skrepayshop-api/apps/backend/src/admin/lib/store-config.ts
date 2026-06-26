@@ -1,14 +1,11 @@
-const PROVISIONAL_DOMAIN_SUFFIX = ".skrepay.shop"
-
-export type StoreDomainType = "provisional" | "custom"
-
 export type RemoteStoreConfig = {
+  primary_url?: string | null
   storefront_preview_url?: string | null
 }
 
 export type StoreConfig = {
   adminHostname: string
-  domainType: StoreDomainType
+  domainType: "provisional" | "custom"
   storefrontPreviewUrl: string | null
   resolvedStorefrontBaseUrl: string
 }
@@ -25,7 +22,7 @@ export function isProvisionalSkrepayShopDomain(hostname: string): boolean {
   const normalized = hostname.trim().toLowerCase()
 
   return (
-    normalized.endsWith(PROVISIONAL_DOMAIN_SUFFIX) &&
+    normalized.endsWith(".skrepay.shop") &&
     normalized !== "skrepay.shop"
   )
 }
@@ -47,21 +44,7 @@ export function normalizeStorefrontBaseUrl(value: string): string {
   }
 }
 
-export function getHostnameFromUrl(url: string): string | null {
-  const normalized = normalizeStorefrontBaseUrl(url)
-
-  if (!normalized) {
-    return null
-  }
-
-  try {
-    return new URL(normalized).hostname
-  } catch {
-    return null
-  }
-}
-
-export function classifyStoreDomain(hostname: string): StoreDomainType {
+export function classifyStoreDomain(hostname: string): "provisional" | "custom" {
   return isProvisionalSkrepayShopDomain(hostname) ? "provisional" : "custom"
 }
 
@@ -69,9 +52,11 @@ export function resolveStorefrontBaseUrl(
   adminHostname: string,
   remote?: RemoteStoreConfig | null
 ): string {
-  const configuredUrl = remote?.storefront_preview_url
-    ? normalizeStorefrontBaseUrl(remote.storefront_preview_url)
-    : ""
+  const configuredUrl = remote?.primary_url
+    ? normalizeStorefrontBaseUrl(remote.primary_url)
+    : remote?.storefront_preview_url
+      ? normalizeStorefrontBaseUrl(remote.storefront_preview_url)
+      : ""
 
   if (configuredUrl) {
     return configuredUrl
@@ -92,13 +77,21 @@ export function buildStoreConfig(
     adminHostname,
     remote
   )
-  const resolvedHost =
-    getHostnameFromUrl(resolvedStorefrontBaseUrl) || adminHostname
+
+  let resolvedHost = adminHostname
+  try {
+    resolvedHost = new URL(resolvedStorefrontBaseUrl).hostname
+  } catch {
+    // keep admin hostname
+  }
 
   return {
     adminHostname,
     domainType: classifyStoreDomain(resolvedHost),
-    storefrontPreviewUrl: remote?.storefront_preview_url?.trim() || null,
+    storefrontPreviewUrl:
+      remote?.primary_url?.trim() ||
+      remote?.storefront_preview_url?.trim() ||
+      null,
     resolvedStorefrontBaseUrl,
   }
 }
@@ -108,18 +101,37 @@ export async function loadStoreConfig(): Promise<StoreConfig> {
   let remote: RemoteStoreConfig | null = null
 
   try {
-    const response = await fetch("/admin/storefront-theme", {
+    const domainsResponse = await fetch("/admin/store-domains", {
       credentials: "include",
     })
 
-    if (response.ok) {
-      const data = await response.json()
+    if (domainsResponse.ok) {
+      const domainsData = await domainsResponse.json()
       remote = {
-        storefront_preview_url: data?.theme?.storefront_preview_url ?? null,
+        primary_url: domainsData?.primary_url ?? null,
       }
     }
   } catch {
-    // Hostname-based fallback is applied below.
+    // fallback below
+  }
+
+  if (!remote?.primary_url) {
+    try {
+      const themeResponse = await fetch("/admin/storefront-theme", {
+        credentials: "include",
+      })
+
+      if (themeResponse.ok) {
+        const themeData = await themeResponse.json()
+        remote = {
+          ...remote,
+          primary_url: themeData?.primary_url ?? null,
+          storefront_preview_url: themeData?.theme?.storefront_preview_url ?? null,
+        }
+      }
+    } catch {
+      // hostname fallback below
+    }
   }
 
   return buildStoreConfig(adminHostname, remote)

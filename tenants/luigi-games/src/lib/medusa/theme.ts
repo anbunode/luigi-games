@@ -2,6 +2,7 @@ import {
   defaultStorefrontTheme,
   type StorefrontTheme,
 } from "@/lib/theme-types"
+import { siteConfig } from "@/lib/config/site"
 import { sdk, medusaConfigured } from "./config"
 
 export async function getStorefrontTheme(): Promise<StorefrontTheme> {
@@ -15,6 +16,9 @@ export async function getStorefrontTheme(): Promise<StorefrontTheme> {
       {
         method: "GET",
         cache: "no-store",
+        headers: {
+          "x-skrepay-tenant": siteConfig.tenantId,
+        },
       }
     )
 

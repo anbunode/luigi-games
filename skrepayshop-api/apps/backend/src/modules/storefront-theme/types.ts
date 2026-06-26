@@ -41,5 +41,5 @@ export const DEFAULT_STOREFRONT_THEME: StorefrontThemeSettings = {
   show_category_pills: true,
   show_product_list: true,
   show_genre_grid: true,
-  storefront_preview_url: "https://luigigame.com",
+  storefront_preview_url: "",
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { Link } from "react-router-dom"
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { Swatch } from "@medusajs/icons"
 import {
@@ -63,7 +64,7 @@ const emptyTheme: ThemeForm = {
   show_category_pills: true,
   show_product_list: true,
   show_genre_grid: true,
-  storefront_preview_url: "https://luigigame.com",
+  storefront_preview_url: "",
 }
 
 function SectionBlock({
@@ -113,14 +114,20 @@ const StorefrontThemePage = () => {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [primaryUrl, setPrimaryUrl] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const previewUrl = useMemo(() => {
-    const base = theme.storefront_preview_url || emptyTheme.storefront_preview_url
+    const base =
+      primaryUrl ||
+      theme.storefront_preview_url ||
+      (typeof window !== "undefined"
+        ? `https://${window.location.hostname}`
+        : "https://skrepay.com")
     const url = new URL(base)
     url.searchParams.set("themePreview", Date.now().toString())
     return url.toString()
-  }, [theme.storefront_preview_url, saving])
+  }, [primaryUrl, theme.storefront_preview_url, saving])
 
   useEffect(() => {
     const load = async () => {
@@ -138,6 +145,7 @@ const StorefrontThemePage = () => {
 
         const themeData = await themeResponse.json()
         setTheme({ ...emptyTheme, ...themeData.theme })
+        setPrimaryUrl(themeData.primary_url ?? themeData.theme?.storefront_preview_url ?? "")
 
         if (productsResponse.ok) {
           const productsData = await productsResponse.json()
@@ -274,14 +282,15 @@ const StorefrontThemePage = () => {
                 />
               </div>
             </Field>
-            <Field label="URL de vista previa">
-              <Input
-                value={theme.storefront_preview_url}
-                onChange={(e) =>
-                  updateField("storefront_preview_url", e.target.value)
-                }
-                placeholder="https://tu-tienda.netlify.app"
-              />
+            <Field label="Dominio público de la tienda">
+              <div className="rounded-md border border-ui-border-base bg-ui-bg-subtle px-3 py-2">
+                <Text size="small">
+                  {primaryUrl || "Sin dominio principal configurado"}
+                </Text>
+              </div>
+              <Button asChild variant="secondary" className="mt-2 w-fit" size="small">
+                <Link to="/settings/domains">Configurar en Dominios</Link>
+              </Button>
             </Field>
           </SectionBlock>
 

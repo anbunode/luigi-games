@@ -22,6 +22,7 @@ const StorefrontTheme = model.define("storefront_theme", {
   show_product_list: model.boolean(),
   show_genre_grid: model.boolean(),
   storefront_preview_url: model.text(),
+  tenant_id: model.text().nullable(),
 })
 
 export default StorefrontTheme
