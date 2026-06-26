@@ -1,52 +1,25 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
-import { useEffect } from "react"
-import { getPlatformLoginUrl } from "../lib/platform-url"
-
-declare global {
-  interface Window {
-    __skrepayAuthBridgeInstalled?: boolean
-  }
-}
+import { useLayoutEffect } from "react"
+import { installAuthBridge } from "../lib/auth-bridge"
 
 const PlatformAuthBridge = () => {
-  useEffect(() => {
-    const loginUrl = getPlatformLoginUrl()
-
-    if (window.__skrepayAuthBridgeInstalled) {
-      return
-    }
-
-    window.__skrepayAuthBridgeInstalled = true
-
-    const originalFetch = window.fetch.bind(window)
-
-    window.fetch = async (input, init) => {
-      const response = await originalFetch(input, init)
-      const method = (init?.method || "GET").toUpperCase()
-      const url =
-        typeof input === "string"
-          ? input
-          : input instanceof Request
-            ? input.url
-            : String(input)
-
-      if (
-        method === "DELETE" &&
-        url.includes("/auth/session") &&
-        response.ok
-      ) {
-        window.location.replace(loginUrl)
-      }
-
-      return response
-    }
+  useLayoutEffect(() => {
+    installAuthBridge()
   }, [])
 
   return null
 }
 
 export const config = defineWidgetConfig({
-  zone: ["order.list.before", "product.list.before", "store.details.before"],
+  zone: [
+    "order.list.before",
+    "product.list.before",
+    "customer.list.before",
+    "store.details.before",
+    "promotion.list.before",
+    "inventory_item.list.before",
+    "login.before",
+  ],
 })
 
 export default PlatformAuthBridge
