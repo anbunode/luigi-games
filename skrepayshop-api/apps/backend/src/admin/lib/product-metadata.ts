@@ -16,7 +16,10 @@ export function createMetadataRow(
   value = ""
 ): MetadataRow {
   return {
-    id: crypto.randomUUID(),
+    id:
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     key,
     value,
   }

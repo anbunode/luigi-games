@@ -1,6 +1,4 @@
-import type { AdminProduct } from "@medusajs/framework/types"
 import { Button, Container, Text, toast } from "@medusajs/ui"
-import { useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { loadStoreConfig } from "../../lib/store-config"
 import {
@@ -14,7 +12,12 @@ import { SectionBlock } from "./SectionBlock"
 import { SeoFields } from "./SeoFields"
 
 type ProductMetadataSeoPanelProps = {
-  product: AdminProduct
+  product: {
+    id: string
+    title: string
+    handle?: string | null
+    metadata?: Record<string, unknown> | null
+  }
 }
 
 async function saveProductMetadata(
@@ -43,7 +46,6 @@ async function saveProductMetadata(
 export function ProductMetadataSeoPanel({
   product,
 }: ProductMetadataSeoPanelProps) {
-  const queryClient = useQueryClient()
   const [customRows, setCustomRows] = useState<MetadataRow[]>([])
   const [seoTitle, setSeoTitle] = useState("")
   const [seoDescription, setSeoDescription] = useState("")
@@ -97,9 +99,6 @@ export function ProductMetadataSeoPanel({
         seoDescription
       )
       await saveProductMetadata(product.id, metadata)
-      await queryClient.invalidateQueries({
-        queryKey: ["product", product.id],
-      })
       toast.success("Metadatos y SEO guardados correctamente.")
     } catch (error) {
       toast.error(
