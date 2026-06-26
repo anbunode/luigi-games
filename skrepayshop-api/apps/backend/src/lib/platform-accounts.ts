@@ -1,7 +1,13 @@
 import { createHash, randomInt } from "crypto"
 import { Pool } from "pg"
+import type { AuthenticationInput } from "@medusajs/framework/types"
 import type { MedusaContainer } from "@medusajs/framework"
-import { createSalesChannelsWorkflow } from "@medusajs/medusa/core-flows"
+import { Modules } from "@medusajs/framework/utils"
+import {
+  createSalesChannelsWorkflow,
+  createUsersWorkflow,
+  setAuthAppMetadataWorkflow,
+} from "@medusajs/medusa/core-flows"
 import { sendSkrepayEmail, verificationEmailContent } from "./email"
 
 export type SignupPayload = {
@@ -67,6 +73,82 @@ async function slugTaken(slug: string): Promise<boolean> {
     [slug]
   )
   return Boolean(result.rowCount)
+}
+
+function buildAuthInput(email: string, password: string): AuthenticationInput {
+  return {
+    actor_type: "user",
+    body: { email, password },
+    query: {},
+    headers: {},
+    url: "/auth/user/emailpass",
+    protocol: "http",
+  }
+}
+
+async function resolveAuthIdentityId(
+  container: MedusaContainer,
+  email: string,
+  password: string
+): Promise<string> {
+  const authModule = container.resolve(Modules.AUTH)
+  const input = buildAuthInput(email, password)
+
+  const registered = await authModule.register("emailpass", input)
+
+  if (registered.success && registered.authIdentity) {
+    return registered.authIdentity.id
+  }
+
+  const authenticated = await authModule.authenticate("emailpass", input)
+
+  if (authenticated.success && authenticated.authIdentity) {
+    return authenticated.authIdentity.id
+  }
+
+  throw new Error(
+    "No se pudieron registrar las credenciales. Si ya intentaste activar la cuenta, vuelve a solicitar el código."
+  )
+}
+
+async function resolveAdminUserId(
+  container: MedusaContainer,
+  email: string,
+  shopName: string,
+  authIdentityId: string
+): Promise<string> {
+  const userModule = container.resolve(Modules.USER)
+  const existingUsers = await userModule.listUsers({ email }, { take: 1 })
+
+  let userId = existingUsers[0]?.id
+
+  if (!userId) {
+    const {
+      result: [createdUser],
+    } = await createUsersWorkflow(container).run({
+      input: {
+        users: [
+          {
+            email,
+            first_name: shopName,
+            last_name: "",
+          },
+        ],
+      },
+    })
+
+    userId = createdUser.id
+  }
+
+  await setAuthAppMetadataWorkflow(container).run({
+    input: {
+      authIdentityId,
+      actorType: "user",
+      value: userId,
+    },
+  })
+
+  return userId
 }
 
 export async function startSignup(input: SignupPayload): Promise<void> {
@@ -164,67 +246,19 @@ export async function completeSignup(
   }
 
   const payload = record.payload
-  const base = (
-    process.env.MEDUSA_BACKEND_URL || "https://skrepayshop-api.onrender.com"
-  ).replace(/\/$/, "")
 
-  const registerResponse = await fetch(`${base}/auth/user/emailpass/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password: payload.password }),
-  })
+  const authIdentityId = await resolveAuthIdentityId(
+    container,
+    email,
+    payload.password
+  )
 
-  if (!registerResponse.ok) {
-    const errorData = await registerResponse.json().catch(() => ({}))
-    throw new Error(
-      typeof errorData.message === "string"
-        ? errorData.message
-        : "No se pudo crear la cuenta."
-    )
-  }
-
-  const registerData = (await registerResponse.json().catch(() => ({}))) as {
-    token?: string
-    user?: { id?: string }
-  }
-
-  const registrationToken = registerData.token
-
-  if (!registrationToken) {
-    throw new Error("No se recibió token de registro de Medusa.")
-  }
-
-  const createUserResponse = await fetch(`${base}/admin/users`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${registrationToken}`,
-    },
-    body: JSON.stringify({
-      email,
-      first_name: payload.shopName,
-      last_name: "",
-    }),
-  })
-
-  if (!createUserResponse.ok) {
-    const errorData = await createUserResponse.json().catch(() => ({}))
-    throw new Error(
-      typeof errorData.message === "string"
-        ? errorData.message
-        : "No se pudo vincular la cuenta con el panel."
-    )
-  }
-
-  const createUserData = (await createUserResponse.json().catch(() => ({}))) as {
-    user?: { id?: string }
-  }
-
-  const userId = createUserData.user?.id
-
-  if (!userId) {
-    throw new Error("No se pudo crear el usuario administrador.")
-  }
+  const userId = await resolveAdminUserId(
+    container,
+    email,
+    payload.shopName,
+    authIdentityId
+  )
 
   const {
     result: [salesChannel],

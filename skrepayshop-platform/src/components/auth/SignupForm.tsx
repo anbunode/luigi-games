@@ -82,7 +82,11 @@ export function SignupForm() {
 
       const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        throw new Error(data.message || "No se pudo crear la cuenta.")
+        const message =
+          data.message === "Unauthorized"
+            ? "No se pudo activar la cuenta. Espera un momento e inténtalo otra vez con el mismo código."
+            : data.message || "No se pudo crear la cuenta."
+        throw new Error(message)
       }
 
       router.push("/login?registered=1")
