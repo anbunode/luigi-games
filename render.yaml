@@ -32,5 +32,7 @@ services:
         value: https://skrepay.com,https://www.skrepay.com,https://app.skrepay.com,https://api.skrepay.com
       - key: AUTH_CORS
         value: https://skrepay.com,https://www.skrepay.com,https://app.skrepay.com,https://api.skrepay.com
+      - key: PLATFORM_URL
+        value: https://skrepay.com
       - key: STOREFRONT_URL
         value: https://skrepay.com
