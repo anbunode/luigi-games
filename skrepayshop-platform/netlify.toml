@@ -1,5 +1,5 @@
+# Usar si en Netlify el "Base directory" es skrepayshop-platform (sin subcarpeta extra).
 [build]
-  base = "skrepayshop-platform"
   command = "npm run build"
   publish = ".next"
 
@@ -14,3 +14,6 @@
   NEXT_PUBLIC_TENANT_STORE_BASE = "skrepay.shop"
   NEXT_PUBLIC_PAYMENT_LINK_BASE = "pay.skrepay.com"
   NEXT_PUBLIC_DEMO_STORE_URL = "https://demo.skrepay.shop"
+  MEDUSA_BACKEND_URL = "https://luigi-games-api1.onrender.com"
+  NEXT_PUBLIC_ADMIN_ORIGIN = "https://luigi-games-api1.onrender.com"
+  NEXT_PUBLIC_MEDUSA_BACKEND_URL = "https://luigi-games-api1.onrender.com"
