@@ -17,7 +17,7 @@ export function getShellPlaceholderImageUrl() {
   const base =
     process.env.STOREFRONT_URL ||
     process.env.STOREFRONT_PREVIEW_URL ||
-    "https://luigigame.com"
+    "https://skrepay.com"
 
   return `${base.replace(/\/$/, "")}/placeholder-product.svg`
 }
