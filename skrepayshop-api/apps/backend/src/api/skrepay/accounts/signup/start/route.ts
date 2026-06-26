@@ -1,5 +1,5 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { startSignup } from "../../../lib/platform-accounts"
+import { startSignup } from "../../../../../lib/platform-accounts"
 
 type Body = {
   email?: string
