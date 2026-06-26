@@ -23,15 +23,15 @@ services:
       - key: AUTH_MFA_ENCRYPTION_KEY
         generateValue: true
       - key: MEDUSA_BACKEND_URL
-        value: https://api.skrepay.com
+        value: https://skrepayshop-api.onrender.com
       - key: PLATFORM_URL
         value: https://skrepay.com
       - key: STORE_CORS
         value: https://skrepay.com,https://www.skrepay.com,https://app.skrepay.com
       - key: ADMIN_CORS
-        value: https://skrepay.com,https://www.skrepay.com,https://app.skrepay.com,https://api.skrepay.com
+        value: https://skrepay.com,https://www.skrepay.com,https://app.skrepay.com,https://skrepayshop-api.onrender.com
       - key: AUTH_CORS
-        value: https://skrepay.com,https://www.skrepay.com,https://app.skrepay.com,https://api.skrepay.com
+        value: https://skrepay.com,https://www.skrepay.com,https://app.skrepay.com,https://skrepayshop-api.onrender.com
       - key: PLATFORM_URL
         value: https://skrepay.com
       - key: STOREFRONT_URL
