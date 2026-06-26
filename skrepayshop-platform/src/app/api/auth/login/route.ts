@@ -51,9 +51,14 @@ export async function POST(request: Request) {
     )
   }
 
+  const bridgeUrl = new URL(
+    "/skrepay/session-bridge",
+    platformConfig.backendUrl
+  )
+  bridgeUrl.searchParams.set("token", token)
+
   return NextResponse.json({
-    token,
-    redirectUrl: platformConfig.adminUrl,
+    redirectUrl: bridgeUrl.toString(),
     message: "Sesión iniciada correctamente.",
   })
 }
