@@ -133,7 +133,7 @@ if ($netlifyToken) {
     }
 } else {
     Write-Host ""
-    Write-Host "Netlify: conectado a GitHub — haz git push origin main para publicar skrepay.com." -ForegroundColor Yellow
+    Write-Host "Netlify: conectado a GitHub - haz git push origin main para publicar skrepay.com." -ForegroundColor Yellow
 }
 
 Write-Host ""
