@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { LoaderCircle } from "lucide-react"
 import { platformConfig } from "@/lib/config"
+import { establishMedusaSession } from "@/lib/medusa-auth"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
@@ -31,6 +32,15 @@ export function LoginForm() {
       }
 
       const target = data.redirectUrl || platformConfig.adminUrl
+
+      if (data.token) {
+        const sessionOk = await establishMedusaSession(data.token as string)
+        if (!sessionOk) {
+          throw new Error(
+            "Credenciales correctas, pero no se pudo abrir el panel. Revisa CORS en Render (AUTH_CORS debe incluir https://skrepay.com)."
+          )
+        }
+      }
 
       setRedirecting(true)
       window.location.replace(target)

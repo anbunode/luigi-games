@@ -44,23 +44,15 @@ export async function POST(request: Request) {
   if (!token) {
     return NextResponse.json(
       {
-        message: "Acceso validado. Redirigiendo al panel oficial…",
-        redirectUrl: platformConfig.adminUrl,
+        message:
+          "Credenciales válidas pero no se recibió token. Contacta soporte.",
       },
-      { status: 200 }
+      { status: 502 }
     )
   }
 
-  await fetch(`${platformConfig.backendUrl}/auth/session`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    cache: "no-store",
-  }).catch(() => null)
-
   return NextResponse.json({
+    token,
     redirectUrl: platformConfig.adminUrl,
     message: "Sesión iniciada correctamente.",
   })

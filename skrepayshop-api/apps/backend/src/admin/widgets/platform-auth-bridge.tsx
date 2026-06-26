@@ -12,7 +12,7 @@ const PlatformAuthBridge = () => {
   useEffect(() => {
     const loginUrl = getPlatformLoginUrl()
 
-    if (window.location.pathname.includes("/login")) {
+    if (window.location.pathname.endsWith("/login")) {
       window.location.replace(loginUrl)
       return
     }
