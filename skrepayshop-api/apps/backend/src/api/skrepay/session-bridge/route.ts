@@ -1,5 +1,14 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { getAuthContextFromJwtToken } from "@medusajs/framework/http"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { getPlatformLoginUrl } from "../../../lib/platform-url"
+
+type SessionRequest = MedusaRequest & {
+  session: {
+    auth_context?: Record<string, unknown>
+    save: (callback: (error?: Error | null) => void) => void
+  }
+}
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const token = typeof req.query.token === "string" ? req.query.token.trim() : ""
@@ -9,35 +18,43 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
-  const port = process.env.PORT || "9000"
-  const internalBase = `http://127.0.0.1:${port}`
+  const { http } = req.scope
+    .resolve(ContainerRegistrationKeys.CONFIG_MODULE)
+    .projectConfig
 
-  const sessionResponse = await fetch(`${internalBase}/auth/session`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  })
+  const jwtSecret = http.jwtSecret
 
-  const setCookieHeaders =
-    typeof sessionResponse.headers.getSetCookie === "function"
-      ? sessionResponse.headers.getSetCookie()
-      : []
-
-  for (const cookie of setCookieHeaders) {
-    res.appendHeader("Set-Cookie", cookie)
-  }
-
-  const fallbackCookie = sessionResponse.headers.get("set-cookie")
-  if (!setCookieHeaders.length && fallbackCookie) {
-    res.appendHeader("Set-Cookie", fallbackCookie)
-  }
-
-  if (sessionResponse.ok) {
-    res.status(302).setHeader("Location", "/app").end()
+  if (!jwtSecret) {
+    res.status(302).setHeader("Location", getPlatformLoginUrl()).end()
     return
   }
 
-  res.status(302).setHeader("Location", getPlatformLoginUrl()).end()
+  const authContext = getAuthContextFromJwtToken(
+    `Bearer ${token}`,
+    jwtSecret,
+    ["bearer"],
+    ["user"],
+    http.jwtPublicKey,
+    http.jwtVerifyOptions ?? http.jwtOptions
+  )
+
+  if (!authContext?.actor_id) {
+    res.status(302).setHeader("Location", getPlatformLoginUrl()).end()
+    return
+  }
+
+  const sessionReq = req as SessionRequest
+  sessionReq.session.auth_context = authContext
+
+  await new Promise<void>((resolve, reject) => {
+    sessionReq.session.save((error) => {
+      if (error) {
+        reject(error)
+        return
+      }
+      resolve()
+    })
+  })
+
+  res.status(302).setHeader("Location", "/app").end()
 }
