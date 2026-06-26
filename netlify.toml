@@ -17,8 +17,8 @@
   NEXT_PUBLIC_TENANT_STORE_BASE = "skrepay.shop"
   NEXT_PUBLIC_PAYMENT_LINK_BASE = "pay.skrepay.com"
   NEXT_PUBLIC_DEMO_STORE_URL = "https://demo.skrepay.shop"
-  # API SkrepayShop (Render). Si api.skrepay.com aún no resuelve, usa temporalmente:
-  # https://skrepayshop-api.onrender.com
-  MEDUSA_BACKEND_URL = "https://api.skrepay.com"
-  NEXT_PUBLIC_ADMIN_ORIGIN = "https://api.skrepay.com"
-  NEXT_PUBLIC_MEDUSA_BACKEND_URL = "https://api.skrepay.com"
+  # API Medusa en Render (misma DB Supabase). Cuando skrepayshop-api esté Live, cambia a:
+  # https://skrepayshop-api.onrender.com o https://api.skrepay.com
+  MEDUSA_BACKEND_URL = "https://luigi-games-api1.onrender.com"
+  NEXT_PUBLIC_ADMIN_ORIGIN = "https://luigi-games-api1.onrender.com"
+  NEXT_PUBLIC_MEDUSA_BACKEND_URL = "https://luigi-games-api1.onrender.com"
