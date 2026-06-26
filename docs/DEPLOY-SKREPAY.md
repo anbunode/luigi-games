@@ -58,3 +58,10 @@ Trigger deploy: **Deploys** → **Trigger deploy**
 cd skrepayshop-api/apps/backend
 npx medusa user -e admin@skrepay.com -p TuPasswordSegura2026!
 ```
+
+## 6. Cuentas de comerciantes (registro en skrepay.com)
+
+1. Ejecuta la migración en Supabase SQL Editor: `supabase/migrations/20260626120000_skrepayshop_accounts.sql`
+2. En Render → `skrepayshop-api` → añade `RESEND_API_KEY` ([resend.com](https://resend.com)) y `SKREPAY_EMAIL_FROM`
+3. Los usuarios se registran en **https://skrepay.com/signup** (código por correo)
+4. Recuperación de contraseña: **https://skrepay.com/forgot-password**

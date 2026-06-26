@@ -34,7 +34,7 @@ export function PlatformHeader() {
             Iniciar sesión
           </Link>
           <Link
-            href="/login"
+            href="/signup"
             className="rounded-full bg-white px-3 py-2 text-sm font-semibold text-ink transition-transform hover:scale-[1.02] sm:px-4"
           >
             Empezar gratis

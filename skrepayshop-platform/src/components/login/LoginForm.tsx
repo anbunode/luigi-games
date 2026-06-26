@@ -113,8 +113,13 @@ export function LoginForm() {
 
       <p className="text-center text-sm text-ink-muted">
         ¿Primera vez?{" "}
-        <Link href="/login" className="font-medium text-brand hover:underline">
+        <Link href="/signup" className="font-medium text-brand hover:underline">
           Crea tu cuenta gratis
+        </Link>
+      </p>
+      <p className="text-center text-sm text-ink-muted">
+        <Link href="/forgot-password" className="font-medium text-brand hover:underline">
+          ¿Olvidaste tu contraseña?
         </Link>
       </p>
     </form>

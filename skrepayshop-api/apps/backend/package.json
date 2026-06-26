@@ -37,6 +37,7 @@
     "@tanstack/react-query": "5.64.2",
     "busboy": "^1.6.0",
     "multer": "^2.0.2",
+    "pg": "^8.22.0",
     "react-i18next": "13.5.0",
     "react-router-dom": "6.30.3",
     "zod": "4.2.0"

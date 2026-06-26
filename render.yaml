@@ -34,5 +34,9 @@ services:
         value: https://skrepay.com,https://www.skrepay.com,https://app.skrepay.com,https://skrepayshop-api.onrender.com
       - key: PLATFORM_URL
         value: https://skrepay.com
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SKREPAY_EMAIL_FROM
+        value: SkrepayShop <noreply@skrepay.com>
       - key: STOREFRONT_URL
         value: https://skrepay.com
