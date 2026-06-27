@@ -1,5 +1,5 @@
-import { Badge, Table, Text, Input, Checkbox } from "@medusajs/ui"
-import { MagnifyingGlass, Plus } from "@medusajs/icons"
+import { Badge, Table, Text, Input } from "@medusajs/ui"
+import { Plus } from "@medusajs/icons"
 import { Link } from "react-router-dom"
 import {
   formatDate,
@@ -9,6 +9,17 @@ import {
   type DraftOrderRow,
 } from "../../lib/orders-api"
 import type { AbandonedCartRow } from "../../lib/abandoned-carts-api"
+
+function NativeCheckbox() {
+  return (
+    <input
+      type="checkbox"
+      className="h-4 w-4 rounded border-gray-300 cursor-pointer accent-gray-900"
+      onClick={(e) => e.stopPropagation()}
+      onChange={() => {}}
+    />
+  )
+}
 
 function PaymentStatusBadge({ status }: { status?: string }) {
   if (!status || status === "pending") {
@@ -44,7 +55,7 @@ function FulfillmentStatusBadge({ status }: { status?: string }) {
   )
 }
 
-function DeliveryStatusBadge({ status }: { status?: string }) {
+function DeliveryStatusBadge() {
   return (
     <div className="inline-flex items-center gap-1.5 rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
       <div className="h-2 w-2 rounded-full bg-gray-400" />
@@ -92,17 +103,11 @@ export function OrdersDataTable({ orders }: { orders: AdminOrderRow[] }) {
       {/* Tabs and Filters */}
       <div className="flex flex-col bg-white">
         <div className="flex items-center gap-1 border-b border-gray-200 px-4 pt-2">
-          <div className="px-4 py-2 border-b-2 border-black text-sm font-medium text-black cursor-pointer">
-            Todos
-          </div>
-          <div className="px-2 py-2 text-gray-500 hover:text-gray-900 cursor-pointer">
-            <Plus />
-          </div>
+          <div className="px-4 py-2 border-b-2 border-black text-sm font-medium text-black cursor-pointer">Todos</div>
+          <div className="px-2 py-2 text-gray-500 hover:text-gray-900 cursor-pointer"><Plus /></div>
         </div>
         <div className="p-4 border-b border-gray-200">
-          <div className="flex gap-2">
-            <Input type="search" placeholder="Buscar y filtrar" className="w-full md:w-96 shadow-none" />
-          </div>
+          <Input type="search" placeholder="Buscar y filtrar" className="w-full md:w-96 shadow-none" />
         </div>
       </div>
 
@@ -110,7 +115,7 @@ export function OrdersDataTable({ orders }: { orders: AdminOrderRow[] }) {
         <Table>
           <Table.Header className="bg-gray-50">
             <Table.Row>
-              <Table.HeaderCell className="w-10 text-center"><Checkbox /></Table.HeaderCell>
+              <Table.HeaderCell className="w-10 text-center"><NativeCheckbox /></Table.HeaderCell>
               <Table.HeaderCell>Pedido</Table.HeaderCell>
               <Table.HeaderCell>Fecha</Table.HeaderCell>
               <Table.HeaderCell>Cliente</Table.HeaderCell>
@@ -128,7 +133,7 @@ export function OrdersDataTable({ orders }: { orders: AdminOrderRow[] }) {
           <Table.Body className="bg-white">
             {orders.map((order) => (
               <Table.Row key={order.id} className="hover:bg-gray-50 border-b border-gray-200">
-                <Table.Cell className="text-center"><Checkbox /></Table.Cell>
+                <Table.Cell className="text-center"><NativeCheckbox /></Table.Cell>
                 <Table.Cell>
                   <Link to={`/orders/${order.id}`} className="font-semibold text-gray-900 hover:underline">
                     #{order.display_id ?? order.id.slice(-6)}
@@ -141,7 +146,7 @@ export function OrdersDataTable({ orders }: { orders: AdminOrderRow[] }) {
                 <Table.Cell className="text-right"><Text size="small" className="text-gray-900">{formatMoney(order.total, order.currency_code)}</Text></Table.Cell>
                 <Table.Cell><PaymentStatusBadge status={(order as any).payment_status} /></Table.Cell>
                 <Table.Cell><FulfillmentStatusBadge status={(order as any).fulfillment_status} /></Table.Cell>
-                <Table.Cell><Text size="small" className="text-gray-600">{(order as any).items?.length || 1} artículo{(order as any).items?.length !== 1 ? 's' : ''}</Text></Table.Cell>
+                <Table.Cell><Text size="small" className="text-gray-600">{(order as any).items?.length || 1} artículo{(order as any).items?.length !== 1 ? "s" : ""}</Text></Table.Cell>
                 <Table.Cell><DeliveryStatusBadge /></Table.Cell>
                 <Table.Cell><Text size="small" className="text-gray-600">Envío estándar</Text></Table.Cell>
                 <Table.Cell><Badge size="small" color="grey" className="bg-gray-100">Nuevo</Badge></Table.Cell>
@@ -162,15 +167,13 @@ export function DraftOrdersDataTable({ orders }: { orders: DraftOrderRow[] }) {
         <div className="px-2 py-2 text-gray-500 hover:text-gray-900 cursor-pointer"><Plus /></div>
       </div>
       <div className="p-4 border-b border-gray-200">
-        <div className="flex gap-2">
-          <Input type="search" placeholder="Buscar y filtrar" className="w-full md:w-96 shadow-none" />
-        </div>
+        <Input type="search" placeholder="Buscar y filtrar" className="w-full md:w-96 shadow-none" />
       </div>
       <div className="overflow-x-auto">
         <Table>
           <Table.Header className="bg-gray-50">
             <Table.Row>
-              <Table.HeaderCell className="w-10 text-center"><Checkbox /></Table.HeaderCell>
+              <Table.HeaderCell className="w-10 text-center"><NativeCheckbox /></Table.HeaderCell>
               <Table.HeaderCell>Borrador</Table.HeaderCell>
               <Table.HeaderCell>Fecha</Table.HeaderCell>
               <Table.HeaderCell>Cliente</Table.HeaderCell>
@@ -181,7 +184,7 @@ export function DraftOrdersDataTable({ orders }: { orders: DraftOrderRow[] }) {
           <Table.Body className="bg-white">
             {orders.map((order) => (
               <Table.Row key={order.id} className="hover:bg-gray-50 border-b border-gray-200">
-                <Table.Cell className="text-center"><Checkbox /></Table.Cell>
+                <Table.Cell className="text-center"><NativeCheckbox /></Table.Cell>
                 <Table.Cell>
                   <Link to={`/draft-orders/${order.id}`} className="font-semibold text-gray-900 hover:underline">
                     #{order.display_id ?? order.id.slice(-6)}
@@ -208,15 +211,13 @@ export function AbandonedCartsDataTable({ carts }: { carts: AbandonedCartRow[] }
         <div className="px-2 py-2 text-gray-500 hover:text-gray-900 cursor-pointer"><Plus /></div>
       </div>
       <div className="p-4 border-b border-gray-200">
-        <div className="flex gap-2">
-          <Input type="search" placeholder="Buscar y filtrar" className="w-full md:w-96 shadow-none" />
-        </div>
+        <Input type="search" placeholder="Buscar y filtrar" className="w-full md:w-96 shadow-none" />
       </div>
       <div className="overflow-x-auto">
         <Table>
           <Table.Header className="bg-gray-50">
             <Table.Row>
-              <Table.HeaderCell className="w-10 text-center"><Checkbox /></Table.HeaderCell>
+              <Table.HeaderCell className="w-10 text-center"><NativeCheckbox /></Table.HeaderCell>
               <Table.HeaderCell>Pago</Table.HeaderCell>
               <Table.HeaderCell>Fecha de creación</Table.HeaderCell>
               <Table.HeaderCell>Nombre del cliente</Table.HeaderCell>
@@ -228,9 +229,9 @@ export function AbandonedCartsDataTable({ carts }: { carts: AbandonedCartRow[] }
           <Table.Body className="bg-white">
             {carts.map((cart) => (
               <Table.Row key={cart.id} className="hover:bg-gray-50 border-b border-gray-200">
-                <Table.Cell className="text-center"><Checkbox /></Table.Cell>
+                <Table.Cell className="text-center"><NativeCheckbox /></Table.Cell>
                 <Table.Cell>
-                  <Text size="small" weight="plus" className="font-semibold text-gray-900 hover:underline cursor-pointer">
+                  <Text size="small" weight="plus" className="font-semibold text-gray-900">
                     #{cart.id.slice(-8).toUpperCase()}
                   </Text>
                 </Table.Cell>
