@@ -13,6 +13,8 @@ import {
 
 type ScopedRequest = MedusaRequest & {
   skrepayTenantSchema?: string
+  auth_context?: { actor_id?: string; actor_type?: string }
+  session?: { auth_context?: { actor_id?: string; actor_type?: string } }
 }
 
 function quoteSchema(schema: string): string {
@@ -36,18 +38,15 @@ async function resolveRequestSchema(req: MedusaRequest): Promise<string | null> 
 }
 
 function readActorId(req: MedusaRequest): string | null {
-  const sessionContext = (
-    req as MedusaRequest & {
-      session?: { auth_context?: { actor_id?: string; actor_type?: string } }
-    }
-  ).session?.auth_context
+  const scopedReq = req as ScopedRequest
+  const sessionContext = scopedReq.session?.auth_context
 
   if (sessionContext?.actor_id && sessionContext.actor_type === "user") {
     return sessionContext.actor_id
   }
 
-  if (req.auth_context?.actor_id && req.auth_context.actor_type === "user") {
-    return req.auth_context.actor_id
+  if (scopedReq.auth_context?.actor_id && scopedReq.auth_context.actor_type === "user") {
+    return scopedReq.auth_context.actor_id
   }
 
   const authorization = req.headers.authorization
