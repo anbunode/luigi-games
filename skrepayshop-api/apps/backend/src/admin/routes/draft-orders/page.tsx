@@ -1,6 +1,6 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { useEffect, useState } from "react"
-import { Container, Heading, Text, toast } from "@medusajs/ui"
+import { Button, Container, Heading, Text, toast } from "@medusajs/ui"
 import { EmptyStateCard } from "../../components/orders/EmptyStateCard"
 import { DraftOrdersEmptyIllustration } from "../../components/orders/illustrations"
 import { DraftOrdersDataTable } from "../../components/orders/OrdersDataTable"
@@ -44,6 +44,11 @@ function DraftOrdersPage() {
       <Container className="divide-y p-0">
         <div className="flex items-center justify-between px-6 py-4">
           <Heading level="h1">Borradores</Heading>
+          {!isEmpty ? (
+            <Button size="small" variant="secondary" asChild>
+              <a href="#">Crear pedido preliminar</a>
+            </Button>
+          ) : null}
         </div>
       </Container>
 
@@ -58,7 +63,7 @@ function DraftOrdersPage() {
           description="Usa los pedidos preliminares para recibir pedidos por teléfono, enviar facturas por correo electrónico a los clientes y recaudar pagos."
           primaryAction={{
             label: "Crear pedido preliminar",
-            to: "/draft-orders/create",
+            to: "#",
           }}
           footerLink={{
             label: "Más información sobre creación de pedidos preliminares",
