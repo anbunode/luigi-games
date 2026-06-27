@@ -14,6 +14,8 @@ import {
   resolveStoreTenant,
 } from "./tenant-context"
 import { tenantSchemaName, tenantHasDedicatedDatabase } from "./tenant-provisioner"
+import { runWithTenantSchema } from "./tenant-schema-context"
+import { ensureTenantPoolPatches } from "./tenant-pg-pool-patch"
 
 type ScopedRequest = MedusaRequest & {
   skrepayTenantSchema?: string | null
@@ -99,13 +101,17 @@ export async function withTenantSchema<T>(
   schema: string,
   fn: () => Promise<T>
 ): Promise<T> {
-  await setTenantSearchPath(scope, schema)
+  ensureTenantPoolPatches(scope)
 
-  try {
-    return await fn()
-  } finally {
-    await resetTenantSearchPath(scope)
-  }
+  return runWithTenantSchema(schema, async () => {
+    await setTenantSearchPath(scope, schema)
+
+    try {
+      return await fn()
+    } finally {
+      await resetTenantSearchPath(scope)
+    }
+  })
 }
 
 function readAuthContext(req: MedusaRequest) {
@@ -183,22 +189,25 @@ export async function tenantDatabaseScopeMiddleware(
       return
     }
 
-    await applySearchPath(req.scope, schema)
-    ;(req as ScopedRequest).skrepayTenantSchema = schema
+    ensureTenantPoolPatches(req.scope)
 
-    let cleanedUp = false
-    const cleanup = () => {
-      if (cleanedUp) {
-        return
+    runWithTenantSchema(schema, () => {
+      ;(req as ScopedRequest).skrepayTenantSchema = schema
+
+      let cleanedUp = false
+      const cleanup = () => {
+        if (cleanedUp) {
+          return
+        }
+
+        cleanedUp = true
+        resetSearchPath(req.scope).catch(() => undefined)
       }
 
-      cleanedUp = true
-      resetSearchPath(req.scope).catch(() => undefined)
-    }
-
-    res.on("finish", cleanup)
-    res.on("close", cleanup)
-    next()
+      res.on("finish", cleanup)
+      res.on("close", cleanup)
+      next()
+    })
   } catch (error) {
     next(error)
   }
