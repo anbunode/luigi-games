@@ -19,10 +19,8 @@ module.exports = defineConfig({
       process.env.PLATFORM_URL ||
       process.env.STOREFRONT_URL ||
       "https://skrepay.com",
-    vite: (config) => ({
-      ...config,
+    vite: () => ({
       define: {
-        ...config.define,
         "import.meta.env.VITE_PLATFORM_URL": JSON.stringify(
           process.env.PLATFORM_URL || "https://skrepay.com"
         ),

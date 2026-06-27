@@ -16,6 +16,7 @@
     "backend:seed": "turbo seed --filter=@dtc/backend",
     "backend:shell-reset": "npm run shell-reset --workspace=@dtc/backend",
     "backend:dev": "turbo dev --filter=@dtc/backend",
+    "backend:dev:panel": "npm run dev --workspace=@dtc/backend",
     "storefront:dev": "turbo dev --filter=@dtc/storefront"
   },
   "pnpm": {

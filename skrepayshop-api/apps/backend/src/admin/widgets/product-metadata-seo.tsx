@@ -1,10 +1,5 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
-import { lazy, Suspense } from "react"
-
-const ProductMetadataSeoPanel = lazy(async () => {
-  const module = await import("../components/product/ProductMetadataSeoPanel")
-  return { default: module.ProductMetadataSeoPanel }
-})
+import { ProductMetadataSeoPanel } from "../components/product/ProductMetadataSeoPanel"
 
 type ProductWidgetData = {
   id: string
@@ -22,11 +17,7 @@ const ProductMetadataSeoWidget = ({ data }: ProductMetadataSeoWidgetProps) => {
     return null
   }
 
-  return (
-    <Suspense fallback={null}>
-      <ProductMetadataSeoPanel product={data} />
-    </Suspense>
-  )
+  return <ProductMetadataSeoPanel product={data} />
 }
 
 export const config = defineWidgetConfig({
