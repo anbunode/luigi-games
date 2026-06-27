@@ -144,19 +144,9 @@ function readAuthContext(req: MedusaRequest) {
   )
 }
 
-async function resolveTenantForScopedRequest(
+async function resolveTenantForAdminRequest(
   req: MedusaRequest
 ): Promise<SkrepayTenant | null> {
-  const path = req.url?.split("?")[0] ?? ""
-
-  if (path.startsWith("/store")) {
-    return resolveStoreTenant(req)
-  }
-
-  if (!path.startsWith("/admin")) {
-    return null
-  }
-
   const authContext = readAuthContext(req)
 
   if (!authContext?.actor_id) {
@@ -175,42 +165,73 @@ async function resolveTenantForScopedRequest(
   return getTenantByUserId(authContext.actor_id)
 }
 
-export async function tenantDatabaseScopeMiddleware(
+async function applyTenantScope(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction,
+  tenant: SkrepayTenant | null
+) {
+  const schema = tenant ? resolveTenantSchema(tenant) : null
+
+  if (!schema) {
+    next()
+    return
+  }
+
+  ensureTenantPoolPatches(req.scope)
+
+  runWithTenantSchema(schema, () => {
+    ;(req as ScopedRequest).skrepayTenantSchema = schema
+
+    let cleanedUp = false
+    const cleanup = () => {
+      if (cleanedUp) {
+        return
+      }
+
+      cleanedUp = true
+      resetSearchPath(req.scope).catch(() => undefined)
+    }
+
+    res.on("finish", cleanup)
+    res.on("close", cleanup)
+    next()
+  })
+}
+
+export async function tenantAdminDatabaseScopeMiddleware(
   req: MedusaRequest,
   res: MedusaResponse,
   next: MedusaNextFunction
 ) {
   try {
-    const tenant = await resolveTenantForScopedRequest(req)
-    const schema = tenant ? resolveTenantSchema(tenant) : null
-
-    if (!schema) {
-      next()
-      return
-    }
-
-    ensureTenantPoolPatches(req.scope)
-
-    runWithTenantSchema(schema, () => {
-      ;(req as ScopedRequest).skrepayTenantSchema = schema
-
-      let cleanedUp = false
-      const cleanup = () => {
-        if (cleanedUp) {
-          return
-        }
-
-        cleanedUp = true
-        resetSearchPath(req.scope).catch(() => undefined)
-      }
-
-      res.on("finish", cleanup)
-      res.on("close", cleanup)
-      next()
-    })
+    const tenant = await resolveTenantForAdminRequest(req)
+    await applyTenantScope(req, res, next, tenant)
   } catch (error) {
     next(error)
   }
+}
+
+export async function tenantStoreDatabaseScopeMiddleware(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const tenant = await resolveStoreTenant(req)
+    await applyTenantScope(req, res, next, tenant)
+  } catch (error) {
+    next(error)
+  }
+}
+
+/** @deprecated Use tenantAdminDatabaseScopeMiddleware or tenantStoreDatabaseScopeMiddleware */
+export async function tenantDatabaseScopeMiddleware(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  return tenantAdminDatabaseScopeMiddleware(req, res, next)
 }
 
 export async function resolveTenantSchemaBySlug(

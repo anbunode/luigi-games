@@ -6,6 +6,7 @@ import type {
 import { getAuthContextFromJwtToken } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
 import { getPlatformPool } from "./platform-db"
+import { getAdminRequestPath } from "./request-path"
 
 type ScopedRequest = MedusaRequest & {
   skrepayTenantSchema?: string
@@ -160,7 +161,7 @@ export async function tenantAdminShimMiddleware(
       return
     }
 
-    const path = req.url?.split("?")[0] ?? ""
+    const path = getAdminRequestPath(req)
 
     if (path === "/admin/users/me") {
       await handleUsersMe(req, res, schema)
