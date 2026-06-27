@@ -50,11 +50,21 @@ export function isAutoProvisionEnabled(): boolean {
 
 export function tenantHasDedicatedDatabase(tenant: {
   database_url: string | null
+  database_schema?: string | null
   database_status: string
 }): boolean {
+  const status = tenant.database_status
+
+  if (
+    tenant.database_schema &&
+    ["active", "dedicated", "provisioning"].includes(status)
+  ) {
+    return true
+  }
+
   return Boolean(
     tenant.database_url &&
-      ["active", "dedicated", "provisioning"].includes(tenant.database_status)
+      ["active", "dedicated", "provisioning"].includes(status)
   )
 }
 
