@@ -1,6 +1,6 @@
 import { Badge, Table, Text, Input } from "@medusajs/ui"
 import { Plus } from "@medusajs/icons"
-import { Link } from "react-router-dom"
+
 import {
   formatDate,
   formatMoney,
@@ -135,9 +135,9 @@ export function OrdersDataTable({ orders }: { orders: AdminOrderRow[] }) {
               <Table.Row key={order.id} className="hover:bg-gray-50 border-b border-gray-200">
                 <Table.Cell className="text-center"><NativeCheckbox /></Table.Cell>
                 <Table.Cell>
-                  <Link to={`/orders/${order.id}`} className="font-semibold text-gray-900 hover:underline">
+                  <a href={`/app/orders/${order.id}`} className="font-semibold text-gray-900 hover:underline">
                     #{order.display_id ?? order.id.slice(-6)}
-                  </Link>
+                  </a>
                 </Table.Cell>
                 <Table.Cell><Text size="small" className="text-gray-600">{formatDate(order.created_at)}</Text></Table.Cell>
                 <Table.Cell><Text size="small" className="text-gray-900">{orderCustomerLabel(order)}</Text></Table.Cell>
@@ -186,9 +186,9 @@ export function DraftOrdersDataTable({ orders }: { orders: DraftOrderRow[] }) {
               <Table.Row key={order.id} className="hover:bg-gray-50 border-b border-gray-200">
                 <Table.Cell className="text-center"><NativeCheckbox /></Table.Cell>
                 <Table.Cell>
-                  <Link to={`/draft-orders/${order.id}`} className="font-semibold text-gray-900 hover:underline">
+                  <a href={`/app/draft-orders/${order.id}`} className="font-semibold text-gray-900 hover:underline">
                     #{order.display_id ?? order.id.slice(-6)}
-                  </Link>
+                  </a>
                 </Table.Cell>
                 <Table.Cell><Text size="small" className="text-gray-600">{formatDate(order.created_at)}</Text></Table.Cell>
                 <Table.Cell><Text size="small" className="text-gray-900">{orderCustomerLabel(order)}</Text></Table.Cell>

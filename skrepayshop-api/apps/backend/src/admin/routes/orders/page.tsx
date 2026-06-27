@@ -1,6 +1,5 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
 import { Button, Container, Heading, Text, toast } from "@medusajs/ui"
 import { EmptyStateCard } from "../../components/orders/EmptyStateCard"
 import { OrdersEmptyIllustration } from "../../components/orders/illustrations"
@@ -44,7 +43,7 @@ function OrdersPage() {
           <Heading level="h1">Pedidos</Heading>
           {!isEmpty ? (
             <Button size="small" variant="secondary" asChild>
-              <Link to="/draft-orders/create">Crear pedido</Link>
+              <a href="/app/draft-orders/create">Crear pedido</a>
             </Button>
           ) : null}
         </div>

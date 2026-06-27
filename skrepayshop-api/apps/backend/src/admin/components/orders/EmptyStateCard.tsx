@@ -1,6 +1,5 @@
 import { Button, Text } from "@medusajs/ui"
 import type { ReactNode } from "react"
-import { Link } from "react-router-dom"
 
 type EmptyStateCardProps = {
   illustration: ReactNode
@@ -44,7 +43,7 @@ export function EmptyStateCard({
           {primaryAction ? (
             primaryAction.to ? (
               <Button asChild variant="primary" size="small" className="bg-gray-900 hover:bg-gray-800 text-white">
-                <Link to={primaryAction.to}>{primaryAction.label}</Link>
+                <a href={primaryAction.to.startsWith('/') ? `/app${primaryAction.to}` : `/app/${primaryAction.to}`}>{primaryAction.label}</a>
               </Button>
             ) : (
               <Button
@@ -73,9 +72,9 @@ export function EmptyStateCard({
               {secondaryPanel.action ? (
                 secondaryPanel.action.to ? (
                   <Button asChild variant="secondary" size="small" className="shrink-0 bg-white shadow-sm">
-                    <Link to={secondaryPanel.action.to}>
+                    <a href={secondaryPanel.action.to.startsWith('/') ? `/app${secondaryPanel.action.to}` : `/app/${secondaryPanel.action.to}`}>
                       {secondaryPanel.action.label}
-                    </Link>
+                    </a>
                   </Button>
                 ) : (
                   <Button asChild variant="secondary" size="small" className="shrink-0 bg-white shadow-sm">
