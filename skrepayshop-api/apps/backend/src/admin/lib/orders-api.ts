@@ -89,14 +89,16 @@ export async function fetchDraftOrders(params?: {
   return response.json()
 }
 
-export function formatMoney(amount: number | undefined, currency = "EUR") {
+export function formatMoney(amount: number | undefined, currency?: string | null) {
   if (amount == null || Number.isNaN(amount)) {
     return "—"
   }
 
+  const safeCurrency = currency || "EUR"
+
   return new Intl.NumberFormat("es-ES", {
     style: "currency",
-    currency: currency.toUpperCase(),
+    currency: safeCurrency.toUpperCase(),
   }).format(amount)
 }
 

@@ -73,8 +73,8 @@ export async function fetchProducts(q?: string): Promise<AdminProduct[]> {
   if (q) {
     search.set("q", q)
   }
-  // Expand variants and prices
-  search.set("expand", "variants,variants.prices")
+  // Fetch specific fields in Medusa v2
+  search.set("fields", "id,title,thumbnail,*variants,*variants.prices")
   
   const response = await fetch(`/admin/products?${search.toString()}`, {
     credentials: "include",

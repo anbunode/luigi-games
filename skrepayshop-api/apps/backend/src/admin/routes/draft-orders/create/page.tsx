@@ -60,7 +60,12 @@ function CreateDraftOrderPage() {
   }, [customerSearch])
 
   const selectedRegion = regions.find(r => r.id === selectedRegionId)
-  const currencyCode = selectedRegion?.currency_code?.toUpperCase() || "USD"
+  const rawCurrency = selectedRegion?.currency_code?.toUpperCase()
+  const currencyCode = rawCurrency && rawCurrency.length === 3 ? rawCurrency : "EUR"
+  
+  const formatMoney = (amount: number) => {
+    return new Intl.NumberFormat("es-ES", { style: "currency", currency: currencyCode }).format(amount)
+  }
 
   const handleAddProducts = (newItems: SelectedProductItem[]) => {
     const mapped = newItems.map(item => ({
@@ -145,13 +150,13 @@ function CreateDraftOrderPage() {
                       <div className="flex flex-col">
                         <Text size="small" weight="plus">{item.title}</Text>
                         <Text size="small" className="text-ui-fg-subtle">
-                          {new Intl.NumberFormat("es-ES", { style: "currency", currency: currencyCode }).format(item.unit_price)} x {item.quantity}
+                          {formatMoney(item.unit_price)} x {item.quantity}
                         </Text>
                       </div>
                     </div>
                     <div className="flex items-center gap-x-4">
                       <Text size="small" weight="plus">
-                        {new Intl.NumberFormat("es-ES", { style: "currency", currency: currencyCode }).format(item.unit_price * item.quantity)}
+                        {formatMoney(item.unit_price * item.quantity)}
                       </Text>
                       <Button variant="transparent" size="small" onClick={() => handleRemoveItem(item.id)}>
                         <Trash className="text-ui-fg-muted hover:text-ui-fg-base" />
@@ -173,21 +178,21 @@ function CreateDraftOrderPage() {
                   <div className="flex justify-between items-center text-ui-fg-subtle">
                     <Text size="small">Subtotal</Text>
                     <Text size="small">
-                      {new Intl.NumberFormat("es-ES", { style: "currency", currency: currencyCode }).format(subtotal)}
+                      {formatMoney(subtotal)}
                     </Text>
                   </div>
                   <div className="flex justify-between items-center text-ui-fg-subtle">
                     <Text size="small" className="text-blue-500 cursor-pointer hover:underline">Agregar descuento</Text>
                     <Text size="small">—</Text>
                     <Text size="small">
-                      {new Intl.NumberFormat("es-ES", { style: "currency", currency: currencyCode }).format(0)}
+                      {formatMoney(0)}
                     </Text>
                   </div>
                   <div className="flex justify-between items-center text-ui-fg-subtle">
                     <Text size="small" className="text-blue-500 cursor-pointer hover:underline">Agregar envío o entrega</Text>
                     <Text size="small">—</Text>
                     <Text size="small">
-                      {new Intl.NumberFormat("es-ES", { style: "currency", currency: currencyCode }).format(0)}
+                      {formatMoney(0)}
                     </Text>
                   </div>
                   <div className="flex justify-between items-center text-ui-fg-subtle">
@@ -200,7 +205,7 @@ function CreateDraftOrderPage() {
                   <div className="flex justify-between items-center mt-4 pt-4 border-t border-ui-border-base">
                     <Text size="base" weight="plus" className="text-ui-fg-base">Total</Text>
                     <Text size="base" weight="plus" className="text-ui-fg-base">
-                      {new Intl.NumberFormat("es-ES", { style: "currency", currency: currencyCode }).format(subtotal)}
+                      {formatMoney(subtotal)}
                     </Text>
                   </div>
                 </div>
@@ -314,8 +319,7 @@ function CreateDraftOrderPage() {
   )
 }
 
-export const config = defineRouteConfig({
-  label: "Crear pedido preliminar",
-})
+// Removed label so it doesn't appear as a top-level extension
+export const config = defineRouteConfig({})
 
 export default CreateDraftOrderPage
