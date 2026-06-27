@@ -1,11 +1,16 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { useLayoutEffect } from "react"
+import { useTranslation } from "react-i18next"
 import { installAuthBridge } from "../lib/auth-bridge"
+import { applySkrepayDefaultLocale } from "../lib/default-locale"
 
 const PlatformAuthBridge = () => {
+  const { i18n } = useTranslation()
+
   useLayoutEffect(() => {
     installAuthBridge()
-  }, [])
+    applySkrepayDefaultLocale(i18n)
+  }, [i18n])
 
   return null
 }
