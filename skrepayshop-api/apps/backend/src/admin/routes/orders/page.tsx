@@ -43,7 +43,7 @@ function OrdersPage() {
           <Heading level="h1">Pedidos</Heading>
           {!isEmpty ? (
             <Button size="small" variant="secondary" asChild>
-              <a href="#">Crear pedido</a>
+              <a href="/app/draft-orders/create">Crear pedido</a>
             </Button>
           ) : null}
         </div>
@@ -60,7 +60,7 @@ function OrdersPage() {
           description="Aquí prepararás pedidos, recaudarás pagos y harás seguimiento de su progreso."
           primaryAction={{
             label: "Crear pedido",
-            to: "#",
+            to: "/draft-orders/create",
           }}
           footerLink={{
             label: "Más información sobre pedidos",

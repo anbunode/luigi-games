@@ -46,7 +46,7 @@ function DraftOrdersPage() {
           <Heading level="h1">Borradores</Heading>
           {!isEmpty ? (
             <Button size="small" variant="secondary" asChild>
-              <a href="#">Crear pedido preliminar</a>
+              <a href="/app/draft-orders/create">Crear pedido preliminar</a>
             </Button>
           ) : null}
         </div>
@@ -63,7 +63,7 @@ function DraftOrdersPage() {
           description="Usa los pedidos preliminares para recibir pedidos por teléfono, enviar facturas por correo electrónico a los clientes y recaudar pagos."
           primaryAction={{
             label: "Crear pedido preliminar",
-            to: "#",
+            to: "/draft-orders/create",
           }}
           footerLink={{
             label: "Más información sobre creación de pedidos preliminares",
