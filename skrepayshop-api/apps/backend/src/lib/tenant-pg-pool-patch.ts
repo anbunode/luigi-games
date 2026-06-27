@@ -6,7 +6,10 @@ import { getActiveTenantSchema } from "./tenant-schema-context"
 const patchedPools = new WeakSet<object>()
 
 type PgClient = {
-  query?: (sql: string) => Promise<unknown>
+  query?: (
+    sql: string,
+    cb?: (err: Error | null) => void
+  ) => Promise<unknown> | void
 }
 
 type TarnPool = {
@@ -14,24 +17,44 @@ type TarnPool = {
   release?: (resource: PgClient) => Promise<void> | void
 }
 
-function quoteIdentifier(value: string): string {
-  return `"${value.replace(/"/g, '""')}"`
+type KnexClient = {
+  pool?: TarnPool
+  acquireConnection?: () => Promise<PgClient>
+}
+
+type KnexLike = {
+  client?: KnexClient
 }
 
 async function setClientSearchPath(
   client: PgClient,
   schema: string | null | undefined
 ) {
-  if (typeof client?.query !== "function") {
-    return
-  }
-
   const sql = schema
     ? `SET search_path TO ${quoteIdentifier(schema)}`
     : "SET search_path TO public"
 
+  if (typeof client.query !== "function") {
+    return
+  }
+
   try {
-    await client.query(sql)
+    const result = client.query(sql)
+
+    if (result && typeof (result as Promise<unknown>).then === "function") {
+      await result
+      return
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      client.query!(sql, (err) => {
+        if (err) {
+          reject(err)
+          return
+        }
+        resolve()
+      })
+    })
   } catch {
     // ignore
   }
@@ -68,12 +91,38 @@ export function patchPgPool(pool: TarnPool | null | undefined): void {
   }
 }
 
-type KnexLike = {
-  client?: { pool?: TarnPool }
+function quoteIdentifier(value: string): string {
+  return `"${value.replace(/"/g, '""')}"`
+}
+
+function patchKnexClient(client: KnexClient | null | undefined): void {
+  if (!client) {
+    return
+  }
+
+  patchPgPool(client.pool)
+
+  if (!client.acquireConnection || patchedPools.has(client)) {
+    return
+  }
+
+  patchedPools.add(client)
+
+  const originalAcquireConnection = client.acquireConnection.bind(client)
+  client.acquireConnection = async () => {
+    const resource = await originalAcquireConnection()
+    const schema = getActiveTenantSchema()
+
+    if (schema) {
+      await setClientSearchPath(resource, schema)
+    }
+
+    return resource
+  }
 }
 
 export function patchKnex(knex: KnexLike | null | undefined): void {
-  patchPgPool(knex?.client?.pool)
+  patchKnexClient(knex?.client)
 }
 
 export function ensureTenantPoolPatches(scope: MedusaContainer): void {

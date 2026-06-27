@@ -50,14 +50,26 @@ const hasTenantSlug = Boolean(payload.app_metadata?.tenant_slug)
 
 const headers = { Authorization: `Bearer ${token}` }
 const meStatus = (await fetch(`${base}/admin/users/me`, { headers })).status
-const storesStatus = (await fetch(`${base}/admin/stores`, { headers })).status
+const storesRes = await fetch(`${base}/admin/stores`, { headers })
+const storesStatus = storesRes.status
+let storeCount = 0
+
+if (storesRes.ok) {
+  const body = await storesRes.json()
+  storeCount = body.stores?.length ?? 0
+}
 
 console.log(
   JSON.stringify({
-    ok: loginStatus === 200 && meStatus === 200 && storesStatus === 200,
+    ok:
+      loginStatus === 200 &&
+      meStatus === 200 &&
+      storesStatus === 200 &&
+      storeCount <= 2,
     login: loginStatus,
     tenant_slug_in_jwt: hasTenantSlug,
     users_me: meStatus,
     stores: storesStatus,
+    store_count: storeCount,
   })
 )
