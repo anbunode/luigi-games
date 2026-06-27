@@ -1,0 +1,12 @@
+# SkrepayShop — Supabase (proyecto guylmkzfdreudpkcsvvx)
+# Conectado a GitHub: anbunode/luigi-games
+# Docs: https://supabase.com/docs/guides/cli
+
+project_id = "guylmkzfdreudpkcsvvx"
+
+[db]
+major_version = 15
+
+[db.migrations]
+# Migraciones de PLATAFORMA en supabase/migrations/
+# Los schemas t_{slug} se crean automáticamente vía API en signup.

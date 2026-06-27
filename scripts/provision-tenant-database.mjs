@@ -24,11 +24,14 @@ function loadPlatformDatabaseUrl() {
   const envPath = resolve(backendRoot, ".env")
   const raw = readFileSync(envPath, "utf8")
   for (const line of raw.split(/\r?\n/)) {
+    if (line.startsWith("PLATFORM_DATABASE_URL=")) {
+      return line.slice("PLATFORM_DATABASE_URL=".length).trim().replace(/^["']|["']$/g, "")
+    }
     if (line.startsWith("DATABASE_URL=")) {
       return line.slice("DATABASE_URL=".length).trim().replace(/^["']|["']$/g, "")
     }
   }
-  throw new Error("DATABASE_URL no encontrada en apps/backend/.env")
+  throw new Error("PLATFORM_DATABASE_URL o DATABASE_URL no encontrada en apps/backend/.env")
 }
 
 const slug = process.argv[2]

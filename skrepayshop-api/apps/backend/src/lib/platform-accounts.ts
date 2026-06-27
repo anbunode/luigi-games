@@ -10,6 +10,12 @@ import {
 import { sendSkrepayEmail, verificationEmailContent } from "./email"
 import { getPlatformPool } from "./platform-db"
 import { ensureFreeSubdomain } from "./store-domains"
+import {
+  isAutoProvisionEnabled,
+  provisionTenantDatabase,
+  bootstrapTenantAdmin,
+  getTenantDatabaseBaseUrl,
+} from "./tenant-provisioner"
 
 export type SignupPayload = {
   email: string
@@ -51,15 +57,8 @@ async function emailExists(email: string): Promise<boolean> {
     `select 1 from skrepayshop_tenants where lower(owner_email) = lower($1) limit 1`,
     [email]
   )
-  if (tenant.rowCount) {
-    return true
-  }
 
-  const auth = await db.query(
-    `select 1 from "user" where lower(email) = lower($1) and deleted_at is null limit 1`,
-    [email]
-  )
-  return Boolean(auth.rowCount)
+  return Boolean(tenant.rowCount)
 }
 
 async function slugTaken(slug: string): Promise<boolean> {
@@ -242,50 +241,87 @@ export async function completeSignup(
   }
 
   const payload = record.payload
+  const slug = payload.slug
+  const storefrontUrl = `https://${slug}.skrepay.shop`
 
-  const authIdentityId = await resolveAuthIdentityId(
-    container,
-    email,
-    payload.password
-  )
+  let userId!: string
+  let salesChannelId!: string
+  let databaseUrl: string | null = null
+  let databaseSchema: string | null = null
+  let databaseStatus = "shared"
 
-  const userId = await resolveAdminUserId(
-    container,
-    email,
-    payload.shopName,
-    authIdentityId
-  )
+  if (isAutoProvisionEnabled()) {
+    const provisioned = await provisionTenantDatabase(slug)
+    databaseUrl = provisioned.database_url
+    databaseSchema = provisioned.database_schema ?? null
+    databaseStatus = provisioned.database_status
 
-  const {
-    result: [salesChannel],
-  } = await createSalesChannelsWorkflow(container).run({
-    input: {
-      salesChannelsData: [
-        {
-          name: payload.shopName,
-          description: `Canal SkrepayShop — ${payload.slug}`,
-        },
-      ],
-    },
-  })
+    if (!databaseSchema) {
+      throw new Error("No se pudo determinar el schema del tenant.")
+    }
 
-  const storefrontUrl = `https://${payload.slug}.skrepay.shop`
+    const bootstrapped = await bootstrapTenantAdmin(
+      getTenantDatabaseBaseUrl().split("?")[0],
+      databaseSchema,
+      {
+        email,
+        password: payload.password,
+        shopName: payload.shopName,
+        slug,
+      }
+    )
+
+    userId = bootstrapped.medusa_user_id
+    salesChannelId = bootstrapped.medusa_sales_channel_id
+  } else {
+    const authIdentityId = await resolveAuthIdentityId(
+      container,
+      email,
+      payload.password
+    )
+
+    userId = await resolveAdminUserId(
+      container,
+      email,
+      payload.shopName,
+      authIdentityId
+    )
+
+    const {
+      result: [salesChannel],
+    } = await createSalesChannelsWorkflow(container).run({
+      input: {
+        salesChannelsData: [
+          {
+            name: payload.shopName,
+            description: `Canal SkrepayShop — ${slug}`,
+          },
+        ],
+      },
+    })
+
+    salesChannelId = salesChannel.id
+  }
 
   await db.query(
     `insert into skrepayshop_tenants (
        slug, display_name, owner_email, medusa_user_id, medusa_sales_channel_id,
-       storefront_url, free_subdomain, plan, status, email_verified_at, database_status
-     ) values ($1, $2, $3, $4, $5, $6, $7, 'starter', 'active', now(), 'shared')
+       storefront_url, free_subdomain, plan, status, email_verified_at,
+       database_url, database_schema, database_status
+     ) values ($1, $2, $3, $4, $5, $6, $7, 'starter', 'active', now(), $8, $9, $10)
      on conflict (slug) do nothing
      returning id`,
     [
-      payload.slug,
+      slug,
       payload.shopName,
       email,
       userId,
-      salesChannel.id,
+      salesChannelId,
       storefrontUrl,
-      `${payload.slug}.skrepay.shop`,
+      `${slug}.skrepay.shop`,
+      databaseUrl,
+      databaseSchema,
+      databaseStatus,
     ]
   )
 

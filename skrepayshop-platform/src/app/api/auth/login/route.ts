@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   }
 
   const authResponse = await fetch(
-    `${platformConfig.backendUrl}/auth/user/emailpass`,
+    `${platformConfig.backendUrl}/skrepay/auth/login`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

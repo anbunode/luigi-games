@@ -19,6 +19,8 @@ Copia desde `apps/backend/.env.production.example`. **Mínimo:**
 | Variable | Valor |
 |----------|--------|
 | `DATABASE_URL` | Connection string Supabase (la misma de siempre) |
+| `PLATFORM_DATABASE_URL` | **Misma URL que DATABASE_URL** (registro plataforma; opcional si DATABASE_URL ya está) |
+| `TENANT_AUTO_PROVISION` | `true` — crea schema `t_{slug}` automático en signup |
 | `MEDUSA_BACKEND_URL` | `https://api.skrepay.com` |
 | `STORE_CORS` | `https://skrepay.com,https://www.skrepay.com,https://app.skrepay.com` |
 | `ADMIN_CORS` | igual + `https://api.skrepay.com` |

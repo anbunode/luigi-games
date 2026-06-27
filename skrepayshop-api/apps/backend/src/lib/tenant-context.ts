@@ -12,6 +12,7 @@ export type SkrepayTenant = {
   free_subdomain: string | null
   custom_domain: string | null
   database_url: string | null
+  database_schema: string | null
   database_status: string
 }
 
@@ -43,11 +44,29 @@ export async function getTenantByUserId(
     `select
        id, slug, display_name, owner_email, medusa_user_id,
        medusa_sales_channel_id, storefront_url, free_subdomain,
-       custom_domain, database_url, database_status
+       custom_domain, database_url, database_schema, database_status
      from public.skrepayshop_tenants
      where medusa_user_id = $1
      limit 1`,
     [userId]
+  )
+
+  return result.rows[0] ? mapTenant(result.rows[0]) : null
+}
+
+export async function getTenantByEmail(
+  email: string
+): Promise<SkrepayTenant | null> {
+  const db = getPlatformPool()
+  const result = await db.query<TenantRow>(
+    `select
+       id, slug, display_name, owner_email, medusa_user_id,
+       medusa_sales_channel_id, storefront_url, free_subdomain,
+       custom_domain, database_url, database_schema, database_status
+     from public.skrepayshop_tenants
+     where lower(owner_email) = lower($1)
+     limit 1`,
+    [email.trim()]
   )
 
   return result.rows[0] ? mapTenant(result.rows[0]) : null
@@ -61,7 +80,7 @@ export async function getTenantBySlug(
     `select
        id, slug, display_name, owner_email, medusa_user_id,
        medusa_sales_channel_id, storefront_url, free_subdomain,
-       custom_domain, database_url, database_status
+       custom_domain, database_url, database_schema, database_status
      from public.skrepayshop_tenants
      where slug = $1
      limit 1`,

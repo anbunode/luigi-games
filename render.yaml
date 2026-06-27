@@ -16,6 +16,10 @@ services:
         value: "0.0.0.0"
       - key: DATABASE_URL
         sync: false
+      - key: PLATFORM_DATABASE_URL
+        sync: false
+      - key: TENANT_AUTO_PROVISION
+        value: "true"
       - key: JWT_SECRET
         generateValue: true
       - key: COOKIE_SECRET
@@ -32,8 +36,6 @@ services:
         value: https://skrepay.com,https://www.skrepay.com,https://app.skrepay.com,https://skrepayshop-api.onrender.com
       - key: AUTH_CORS
         value: https://skrepay.com,https://www.skrepay.com,https://app.skrepay.com,https://skrepayshop-api.onrender.com
-      - key: PLATFORM_URL
-        value: https://skrepay.com
       - key: RESEND_API_KEY
         sync: false
       - key: SKREPAY_EMAIL_FROM

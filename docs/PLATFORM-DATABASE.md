@@ -1,40 +1,63 @@
-# SkrepayShop — Arquitectura de bases de datos
+# SkrepayShop — Arquitectura de bases de datos (multi-tenant barato)
 
-## Capas
+## Una sola Supabase + una sola API Render
 
-| Capa | Contenido | Dónde vive |
-|------|-----------|------------|
-| **Plataforma Skrepay** | `skrepayshop_tenants`, `skrepayshop_store_domains`, OTP, payment links | BD central Supabase (`DATABASE_URL` del API) |
-| **Tienda (tenant)** | Medusa: productos, clientes, pedidos, `storefront_theme` | BD dedicada por tenant (`database_url` en el registro) |
+No hace falta un proyecto Supabase ni un servicio Render por tienda.
 
-Skrepay conserva **control total** de todas las URLs de conexión en `skrepayshop_tenants.database_url`.
+| Capa | Dónde | Coste extra |
+|------|--------|-------------|
+| Plataforma (`skrepayshop_*`, OTP, dominios) | Schema `public` | $0 |
+| Tienda (Medusa: productos, clientes, pedidos) | Schema `t_{slug}` en la **misma** Supabase | $0 |
+| API | **Una** instancia Render | $7/mes total |
 
-## Estados de `database_status`
+Cada tenant recibe su schema Postgres (`t_luigi_games`, `t_mi-tienda`, …). La API cambia `search_path` por request según el usuario logueado o el header `x-skrepay-tenant`.
 
-| Valor | Significado |
-|-------|-------------|
-| `shared` | Usa la BD compartida (fase transición / piloto) |
-| `provisioning` | Creando BD dedicada |
-| `dedicated` | BD creada, migrando datos |
-| `active` | BD dedicada en producción |
+## Signup 100% automático
 
-## Dominios
+Al registrarse en `skrepay.com`:
 
-- Tabla: `skrepayshop_store_domains`
-- Panel: **Configuración → Dominios** (`/app/settings/domains`)
-- Subdominio gratis: `{slug}.skrepay.shop` (auto en signup)
-- Dominio custom: manual + DNS o mock Cloudflare
+1. Se crea el schema `t_{slug}`
+2. Se migran tablas Medusa en ese schema
+3. Se crea admin + canal de ventas solo ahí
+4. Se guarda en `skrepayshop_tenants` (`database_schema`, `database_status = active`)
 
-## Próximo paso: BD dedicada Luigi Games
+Sin intervención manual. Escala a cientos/miles de tiendas en la misma instancia.
 
-```bash
-node scripts/provision-tenant-database.mjs luigi-games
+## Variables de entorno (Render)
+
+```env
+DATABASE_URL=postgresql://...supabase.../postgres
+PLATFORM_DATABASE_URL=postgresql://...   # misma URL si quieres
+# TENANT_AUTO_PROVISION=false           # solo para desactivar signup automático
 ```
 
-Crea un proyecto/schema Supabase, ejecuta `medusa db:migrate` contra esa URL y actualiza `skrepayshop_tenants.database_url`.
+No necesitas `LUIGI_GAMES_DATABASE_URL` ni URLs por cliente.
 
-## Aislamiento actual vs objetivo
+## Luigi Games
 
-**Hoy (shared):** temas y dominios ya están scoped por `tenant_id` / `medusa_user_id`. Clientes y pedidos siguen en tablas Medusa compartidas hasta migrar la BD.
+Script único de arranque (schema vacío, sin migrar datos viejos):
 
-**Objetivo:** cada fila en `skrepayshop_tenants` con `database_url` propia + router de API por tenant (fase posterior).
+```bash
+node scripts/connect-luigi-database.mjs --bootstrap
+```
+
+Requiere en `.env`:
+
+```env
+LUIGI_ADMIN_EMAIL=tu@correo.com
+LUIGI_ADMIN_PASSWORD=...
+```
+
+## Login y panel
+
+- Login: `/skrepay/auth/login` → autentica en el schema del tenant
+- Panel `/admin/*`: middleware aplica `search_path` del tenant del JWT/sesión
+- Storefront `/store/*`: middleware usa `x-skrepay-tenant` o `tenant_slug`
+
+## Migraciones SQL de plataforma
+
+```bash
+node scripts/apply-platform-migrations.mjs
+```
+
+Aplica archivos en `supabase/migrations/` sin borrar datos.
