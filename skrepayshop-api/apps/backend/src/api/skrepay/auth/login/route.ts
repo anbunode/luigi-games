@@ -28,7 +28,8 @@ function buildAuthInput(email: string, password: string): AuthenticationInput {
 async function issueUserToken(
   req: MedusaRequest,
   userId: string,
-  authIdentityId: string
+  authIdentityId: string,
+  tenantSlug?: string | null
 ): Promise<string> {
   const config = req.scope.resolve(ContainerRegistrationKeys.CONFIG_MODULE)
   const { http } = config.projectConfig
@@ -39,7 +40,10 @@ async function issueUserToken(
       actor_type: "user",
       auth_identity_id: authIdentityId,
       auth_provider: "emailpass",
-      app_metadata: { user_id: userId },
+      app_metadata: {
+        user_id: userId,
+        ...(tenantSlug ? { tenant_slug: tenantSlug } : {}),
+      },
       user_metadata: {},
     },
     {
@@ -99,7 +103,12 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         password
       )
 
-      const token = await issueUserToken(req, auth.userId, auth.authIdentityId)
+      const token = await issueUserToken(
+        req,
+        auth.userId,
+        auth.authIdentityId,
+        tenant?.slug ?? null
+      )
       res.status(200).json({ token })
       return
     }

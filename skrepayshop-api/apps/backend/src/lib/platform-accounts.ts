@@ -11,11 +11,12 @@ import { sendSkrepayEmail, verificationEmailContent } from "./email"
 import { getPlatformPool } from "./platform-db"
 import { ensureFreeSubdomain } from "./store-domains"
 import {
-  isAutoProvisionEnabled,
-  provisionTenantDatabase,
   bootstrapTenantAdmin,
   getTenantDatabaseBaseUrl,
+  isAutoProvisionEnabled,
+  provisionTenantDatabase,
 } from "./tenant-provisioner"
+import { seedTenantCommerceData } from "./tenant-commerce-bootstrap"
 
 export type SignupPayload = {
   email: string
@@ -273,6 +274,13 @@ export async function completeSignup(
 
     userId = bootstrapped.medusa_user_id
     salesChannelId = bootstrapped.medusa_sales_channel_id
+
+    await seedTenantCommerceData(
+      getTenantDatabaseBaseUrl().split("?")[0],
+      databaseSchema,
+      payload.shopName,
+      salesChannelId
+    )
   } else {
     const authIdentityId = await resolveAuthIdentityId(
       container,

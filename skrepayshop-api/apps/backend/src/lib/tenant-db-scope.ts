@@ -18,7 +18,11 @@ import { tenantSchemaName, tenantHasDedicatedDatabase } from "./tenant-provision
 type ScopedRequest = MedusaRequest & {
   skrepayTenantSchema?: string | null
   session?: {
-    auth_context?: { actor_id?: string; actor_type?: string }
+    auth_context?: {
+      actor_id?: string
+      actor_type?: string
+      app_metadata?: Record<string, unknown>
+    }
   }
 }
 
@@ -38,25 +42,56 @@ export function resolveTenantSchema(tenant: SkrepayTenant): string | null {
   return tenantSchemaName(tenant.slug)
 }
 
+async function applySearchPath(
+  scope: MedusaContainer,
+  schema: string
+): Promise<void> {
+  const schemaSql = `SET search_path TO ${quoteIdentifier(schema)}`
+
+  try {
+    const knex = scope.resolve(ContainerRegistrationKeys.PG_CONNECTION) as {
+      raw: (sql: string) => Promise<unknown>
+    }
+    await knex.raw(schemaSql)
+  } catch {
+    // PG_CONNECTION may be unavailable in some contexts
+  }
+
+  const manager = scope.resolve(
+    ContainerRegistrationKeys.MANAGER
+  ) as EntityManager
+  await manager.getConnection().execute(schemaSql)
+}
+
+async function resetSearchPath(scope: MedusaContainer): Promise<void> {
+  const schemaSql = "SET search_path TO public"
+
+  try {
+    const knex = scope.resolve(ContainerRegistrationKeys.PG_CONNECTION) as {
+      raw: (sql: string) => Promise<unknown>
+    }
+    await knex.raw(schemaSql)
+  } catch {
+    // ignore
+  }
+
+  const manager = scope.resolve(
+    ContainerRegistrationKeys.MANAGER
+  ) as EntityManager
+  await manager.getConnection().execute(schemaSql)
+}
+
 export async function setTenantSearchPath(
   scope: MedusaContainer,
   schema: string
 ): Promise<void> {
-  const manager = scope.resolve(
-    ContainerRegistrationKeys.MANAGER
-  ) as EntityManager
-  await manager
-    .getConnection()
-    .execute(`set search_path to ${quoteIdentifier(schema)}`)
+  await applySearchPath(scope, schema)
 }
 
 export async function resetTenantSearchPath(
   scope: MedusaContainer
 ): Promise<void> {
-  const manager = scope.resolve(
-    ContainerRegistrationKeys.MANAGER
-  ) as EntityManager
-  await manager.getConnection().execute(`set search_path to public`)
+  await resetSearchPath(scope)
 }
 
 export async function withTenantSchema<T>(
@@ -73,13 +108,11 @@ export async function withTenantSchema<T>(
   }
 }
 
-function readBearerUserId(req: MedusaRequest): string | null {
-  const sessionUserId = (req as ScopedRequest).session?.auth_context?.actor_id
-  const sessionActorType = (req as ScopedRequest).session?.auth_context
-    ?.actor_type
+function readAuthContext(req: MedusaRequest) {
+  const sessionContext = (req as ScopedRequest).session?.auth_context
 
-  if (sessionUserId && sessionActorType === "user") {
-    return sessionUserId
+  if (sessionContext?.actor_id && sessionContext.actor_type === "user") {
+    return sessionContext
   }
 
   const authorization = req.headers.authorization
@@ -95,7 +128,7 @@ function readBearerUserId(req: MedusaRequest): string | null {
     return null
   }
 
-  const authContext = getAuthContextFromJwtToken(
+  return getAuthContextFromJwtToken(
     authorization,
     http.jwtSecret,
     ["bearer"],
@@ -103,8 +136,6 @@ function readBearerUserId(req: MedusaRequest): string | null {
     http.jwtPublicKey,
     http.jwtVerifyOptions ?? http.jwtOptions
   )
-
-  return authContext?.actor_id ?? null
 }
 
 async function resolveTenantForScopedRequest(
@@ -116,17 +147,26 @@ async function resolveTenantForScopedRequest(
     return resolveStoreTenant(req)
   }
 
-  if (path.startsWith("/admin")) {
-    const userId = readBearerUserId(req)
-
-    if (!userId) {
-      return null
-    }
-
-    return getTenantByUserId(userId)
+  if (!path.startsWith("/admin")) {
+    return null
   }
 
-  return null
+  const authContext = readAuthContext(req)
+
+  if (!authContext?.actor_id) {
+    return null
+  }
+
+  const tenantSlug = authContext.app_metadata?.tenant_slug
+
+  if (typeof tenantSlug === "string" && tenantSlug.trim()) {
+    const bySlug = await getTenantBySlug(tenantSlug.trim().toLowerCase())
+    if (bySlug) {
+      return bySlug
+    }
+  }
+
+  return getTenantByUserId(authContext.actor_id)
 }
 
 export async function tenantDatabaseScopeMiddleware(
@@ -143,7 +183,7 @@ export async function tenantDatabaseScopeMiddleware(
       return
     }
 
-    await setTenantSearchPath(req.scope, schema)
+    await applySearchPath(req.scope, schema)
     ;(req as ScopedRequest).skrepayTenantSchema = schema
 
     let cleanedUp = false
@@ -153,7 +193,7 @@ export async function tenantDatabaseScopeMiddleware(
       }
 
       cleanedUp = true
-      resetTenantSearchPath(req.scope).catch(() => undefined)
+      resetSearchPath(req.scope).catch(() => undefined)
     }
 
     res.on("finish", cleanup)
