@@ -6,7 +6,10 @@ import type {
 import { getAuthContextFromJwtToken } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
 import { getPlatformPool } from "./platform-db"
-import { getAdminRequestPath } from "./request-path"
+import {
+  resolveTenantForAdminRequest,
+  resolveTenantSchema,
+} from "./tenant-db-scope"
 
 type ScopedRequest = MedusaRequest & {
   skrepayTenantSchema?: string
@@ -14,6 +17,22 @@ type ScopedRequest = MedusaRequest & {
 
 function quoteSchema(schema: string): string {
   return `"${schema.replace(/"/g, '""')}"`
+}
+
+async function resolveRequestSchema(req: MedusaRequest): Promise<string | null> {
+  const scoped = (req as ScopedRequest).skrepayTenantSchema
+  if (scoped) {
+    return scoped
+  }
+
+  const tenant = await resolveTenantForAdminRequest(req)
+  const schema = tenant ? resolveTenantSchema(tenant) : null
+
+  if (schema) {
+    ;(req as ScopedRequest).skrepayTenantSchema = schema
+  }
+
+  return schema
 }
 
 function readActorId(req: MedusaRequest): string | null {
@@ -56,134 +75,135 @@ function readActorId(req: MedusaRequest): string | null {
   return authContext?.actor_id ?? null
 }
 
-async function handleUsersMe(
-  req: MedusaRequest,
-  res: MedusaResponse,
-  schema: string
-) {
-  const id = readActorId(req)
-
-  if (!id) {
-    throw new MedusaError(MedusaError.Types.NOT_FOUND, "User ID not found")
-  }
-
-  const result = await getPlatformPool().query(
-    `select
-       id, email, first_name, last_name, avatar_url, metadata, created_at, updated_at
-     from ${quoteSchema(schema)}."user"
-     where id = $1 and deleted_at is null`,
-    [id]
-  )
-
-  const user = result.rows[0]
-
-  if (!user) {
-    throw new MedusaError(
-      MedusaError.Types.NOT_FOUND,
-      `User with id: ${id} was not found`
-    )
-  }
-
-  res.status(200).json({ user })
-}
-
-async function handleStores(
-  res: MedusaResponse,
-  schema: string
-) {
-  const result = await getPlatformPool().query(
-    `select
-       id, name, default_sales_channel_id, default_region_id, default_location_id,
-       metadata, created_at, updated_at
-     from ${quoteSchema(schema)}.store
-     where deleted_at is null
-     order by created_at asc`
-  )
-
-  res.json({
-    stores: result.rows,
-    count: result.rows.length,
-    offset: 0,
-    limit: result.rows.length,
-  })
-}
-
-async function handleRegions(
-  res: MedusaResponse,
-  schema: string
-) {
-  const result = await getPlatformPool().query(
-    `select
-       id, name, currency_code, automatic_taxes, metadata, created_at, updated_at
-     from ${quoteSchema(schema)}.region
-     where deleted_at is null
-     order by created_at asc`
-  )
-
-  res.json({
-    regions: result.rows,
-    count: result.rows.length,
-    offset: 0,
-    limit: result.rows.length,
-  })
-}
-
-async function handleSalesChannels(
-  res: MedusaResponse,
-  schema: string
-) {
-  const result = await getPlatformPool().query(
-    `select
-       id, name, description, is_disabled, metadata, created_at, updated_at
-     from ${quoteSchema(schema)}.sales_channel
-     where deleted_at is null
-     order by created_at asc`
-  )
-
-  res.json({
-    sales_channels: result.rows,
-    count: result.rows.length,
-    offset: 0,
-    limit: result.rows.length,
-  })
-}
-
-export async function tenantAdminShimMiddleware(
+export async function tenantAdminUsersMeShim(
   req: MedusaRequest,
   res: MedusaResponse,
   next: MedusaNextFunction
 ) {
   try {
-    const schema = (req as ScopedRequest).skrepayTenantSchema
-
-    if (!schema || req.method !== "GET") {
+    const schema = await resolveRequestSchema(req)
+    if (!schema) {
       next()
       return
     }
 
-    const path = getAdminRequestPath(req)
+    const id = readActorId(req)
 
-    if (path === "/admin/users/me") {
-      await handleUsersMe(req, res, schema)
+    if (!id) {
+      throw new MedusaError(MedusaError.Types.NOT_FOUND, "User ID not found")
+    }
+
+    const result = await getPlatformPool().query(
+      `select id, email, first_name, last_name, created_at, updated_at
+       from ${quoteSchema(schema)}."user"
+       where id = $1 and deleted_at is null`,
+      [id]
+    )
+
+    const user = result.rows[0]
+
+    if (!user) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `User with id: ${id} was not found`
+      )
+    }
+
+    res.status(200).json({ user })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function tenantAdminStoresShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveRequestSchema(req)
+    if (!schema) {
+      next()
       return
     }
 
-    if (path === "/admin/stores") {
-      await handleStores(res, schema)
+    const result = await getPlatformPool().query(
+      `select
+         id, name, default_sales_channel_id, default_region_id, default_location_id,
+         metadata, created_at, updated_at
+       from ${quoteSchema(schema)}.store
+       where deleted_at is null
+       order by created_at asc`
+    )
+
+    res.json({
+      stores: result.rows,
+      count: result.rows.length,
+      offset: 0,
+      limit: result.rows.length,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function tenantAdminRegionsShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveRequestSchema(req)
+    if (!schema) {
+      next()
       return
     }
 
-    if (path === "/admin/regions") {
-      await handleRegions(res, schema)
+    const result = await getPlatformPool().query(
+      `select
+         id, name, currency_code, automatic_taxes, metadata, created_at, updated_at
+       from ${quoteSchema(schema)}.region
+       where deleted_at is null
+       order by created_at asc`
+    )
+
+    res.json({
+      regions: result.rows,
+      count: result.rows.length,
+      offset: 0,
+      limit: result.rows.length,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function tenantAdminSalesChannelsShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveRequestSchema(req)
+    if (!schema) {
+      next()
       return
     }
 
-    if (path === "/admin/sales-channels") {
-      await handleSalesChannels(res, schema)
-      return
-    }
+    const result = await getPlatformPool().query(
+      `select
+         id, name, description, is_disabled, metadata, created_at, updated_at
+       from ${quoteSchema(schema)}.sales_channel
+       where deleted_at is null
+       order by created_at asc`
+    )
 
-    next()
+    res.json({
+      sales_channels: result.rows,
+      count: result.rows.length,
+      offset: 0,
+      limit: result.rows.length,
+    })
   } catch (error) {
     next(error)
   }

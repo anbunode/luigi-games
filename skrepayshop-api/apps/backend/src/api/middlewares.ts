@@ -3,16 +3,38 @@ import {
   tenantAdminDatabaseScopeMiddleware,
   tenantStoreDatabaseScopeMiddleware,
 } from "../lib/tenant-db-scope"
-import { tenantAdminShimMiddleware } from "../lib/tenant-admin-shim"
+import {
+  tenantAdminRegionsShim,
+  tenantAdminSalesChannelsShim,
+  tenantAdminStoresShim,
+  tenantAdminUsersMeShim,
+} from "../lib/tenant-admin-shim"
 
 export default defineMiddlewares({
   routes: [
     {
       matcher: /^\/admin(\/|$)/,
-      middlewares: [
-        tenantAdminDatabaseScopeMiddleware,
-        tenantAdminShimMiddleware,
-      ],
+      middlewares: [tenantAdminDatabaseScopeMiddleware],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/users/me",
+      middlewares: [tenantAdminUsersMeShim],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/stores",
+      middlewares: [tenantAdminStoresShim],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/regions",
+      middlewares: [tenantAdminRegionsShim],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/sales-channels",
+      middlewares: [tenantAdminSalesChannelsShim],
     },
     {
       matcher: /^\/store(\/|$)/,

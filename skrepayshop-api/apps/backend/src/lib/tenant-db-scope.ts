@@ -144,7 +144,7 @@ function readAuthContext(req: MedusaRequest) {
   )
 }
 
-async function resolveTenantForAdminRequest(
+export async function resolveTenantForAdminRequest(
   req: MedusaRequest
 ): Promise<SkrepayTenant | null> {
   const authContext = readAuthContext(req)
