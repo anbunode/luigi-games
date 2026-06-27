@@ -82,7 +82,7 @@ function DraftOrdersPage() {
 }
 
 export const config = defineRouteConfig({
-  label: "Borradores",
+  // No label to prevent duplicate sidebar extension
   nested: "/orders",
 })
 

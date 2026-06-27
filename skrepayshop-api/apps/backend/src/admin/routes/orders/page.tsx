@@ -85,7 +85,7 @@ function OrdersPage() {
 }
 
 export const config = defineRouteConfig({
-  label: "Pedidos",
+  // No label to prevent duplicate sidebar extension
 })
 
 export default OrdersPage
