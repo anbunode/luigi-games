@@ -85,6 +85,79 @@ async function loadStoreEnabledCurrencies(
   return result.rows
 }
 
+export type AdminStoreCurrencyRow = StoreCurrencyRow & {
+  currency: {
+    code: string
+    symbol: string
+    symbol_native: string
+    name: string
+    decimal_digits: number
+    rounding: number | string
+  }
+}
+
+/** Formato nativo Medusa AdminStoreCurrency (con relación currency) */
+export async function loadStoreEnabledCurrenciesForAdmin(
+  schema: string,
+  storeId: string
+): Promise<AdminStoreCurrencyRow[]> {
+  const schemaQ = quoteIdent(schema)
+  const result = await getPlatformPool().query<{
+    id: string
+    currency_code: string
+    is_default: boolean
+    store_id: string
+    created_at: Date
+    updated_at: Date
+    deleted_at: Date | null
+    c_code: string
+    symbol: string
+    symbol_native: string
+    name: string
+    decimal_digits: number
+    rounding: number | string
+  }>(
+    `select
+       sc.id,
+       sc.currency_code,
+       sc.is_default,
+       sc.store_id,
+       sc.created_at,
+       sc.updated_at,
+       sc.deleted_at,
+       c.code as c_code,
+       c.symbol,
+       c.symbol_native,
+       c.name,
+       c.decimal_digits,
+       c.rounding
+     from ${schemaQ}.store_currency sc
+     inner join ${schemaQ}.currency c
+       on lower(c.code) = lower(sc.currency_code) and c.deleted_at is null
+     where sc.deleted_at is null and sc.store_id = $1
+     order by sc.is_default desc, sc.currency_code asc`,
+    [storeId]
+  )
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    currency_code: row.currency_code,
+    is_default: row.is_default,
+    store_id: row.store_id,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    deleted_at: row.deleted_at,
+    currency: {
+      code: row.c_code,
+      symbol: row.symbol,
+      symbol_native: row.symbol_native,
+      name: row.name,
+      decimal_digits: row.decimal_digits,
+      rounding: row.rounding,
+    },
+  }))
+}
+
 /** Catálogo maestro (tabla currency) para selectores al crear regiones */
 export async function loadMasterCurrencyCatalog(
   schema: string

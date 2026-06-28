@@ -64,7 +64,6 @@ export const config = defineWidgetConfig({
     "product.details.before",
     "region.list.before",
     "region.details.before",
-    "store.details.before",
     "order.list.before",
   ],
 })

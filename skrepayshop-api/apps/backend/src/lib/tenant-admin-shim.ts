@@ -7,7 +7,7 @@ import { getAuthContextFromJwtToken } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
 import { getPlatformPool } from "./platform-db"
 import {
-  loadStoreCurrenciesForScope,
+  loadStoreEnabledCurrenciesForAdmin,
   loadMasterCurrencyCatalog,
   syncStoreSupportedCurrencies,
   type StoreCurrencyInput,
@@ -124,12 +124,15 @@ async function attachSupportedCurrencies<T extends { id: string }>(
   schema: string,
   stores: T[]
 ) {
-  const byStore = new Map<string, Awaited<ReturnType<typeof loadStoreCurrenciesForScope>>>()
+  const byStore = new Map<
+    string,
+    Awaited<ReturnType<typeof loadStoreEnabledCurrenciesForAdmin>>
+  >()
 
   for (const store of stores) {
     byStore.set(
       store.id,
-      await loadStoreCurrenciesForScope(schema, store.id, "catalog")
+      await loadStoreEnabledCurrenciesForAdmin(schema, store.id)
     )
   }
 
@@ -418,6 +421,65 @@ export async function tenantAdminCurrenciesShim(
       count: rows.length,
       offset: 0,
       limit: rows.length,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+function parseQueryList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => String(entry).split(",")).map((v) => v.trim()).filter(Boolean)
+  }
+  if (typeof value === "string" && value.trim()) {
+    return value.split(",").map((v) => v.trim()).filter(Boolean)
+  }
+  return []
+}
+
+export async function tenantAdminPricePreferencesShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveRequestSchema(req)
+    if (!schema) {
+      next()
+      return
+    }
+
+    const attribute =
+      typeof req.query.attribute === "string" ? req.query.attribute : undefined
+    const values = parseQueryList(req.query.value)
+    const schemaQ = quoteSchema(schema)
+
+    const conditions: string[] = ["deleted_at is null"]
+    const params: unknown[] = []
+
+    if (attribute) {
+      params.push(attribute)
+      conditions.push(`attribute = $${params.length}`)
+    }
+
+    if (values.length > 0) {
+      params.push(values)
+      conditions.push(`value = any($${params.length}::text[])`)
+    }
+
+    const result = await getPlatformPool().query(
+      `select id, attribute, value, is_tax_inclusive, created_at, updated_at, deleted_at
+       from ${schemaQ}.price_preference
+       where ${conditions.join(" and ")}
+       order by created_at asc`,
+      params
+    )
+
+    res.json({
+      price_preferences: result.rows,
+      count: result.rows.length,
+      offset: 0,
+      limit: result.rows.length,
     })
   } catch (error) {
     next(error)

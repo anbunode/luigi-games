@@ -26,11 +26,18 @@ export function patchStoreCacheWithPricingCurrencies(
 ) {
   queryClient.setQueriesData(
     {
-      predicate: (query) =>
-        Array.isArray(query.queryKey) &&
-        query.queryKey.some(
-          (key) => key === "store" || key === "stores" || key === "admin"
-        ),
+      predicate: (query) => {
+        if (!Array.isArray(query.queryKey)) {
+          return false
+        }
+
+        const [root, resource] = query.queryKey
+
+        return (
+          root === "admin" &&
+          (resource === "store" || resource === "stores")
+        )
+      },
     },
     (old: unknown) => {
       if (!old || typeof old !== "object") {
