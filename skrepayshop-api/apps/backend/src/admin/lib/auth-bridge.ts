@@ -2,6 +2,7 @@ import { getPlatformLoginUrl } from "./platform-url"
 import {
   notifyRouteChange,
   resolveStoreCurrencyScope,
+  shouldAttachStoreCurrencyScope,
   STORE_CURRENCY_SCOPE_HEADER,
   withStoreCurrencyScopeHeader,
 } from "./store-currency-scope"
@@ -39,7 +40,7 @@ export function installAuthBridge() {
     let nextInput: RequestInfo | URL = input
     let nextInit = init
 
-    if (method === "GET" && url.includes("/admin/stores")) {
+    if (shouldAttachStoreCurrencyScope(method, url)) {
       const scope = resolveStoreCurrencyScope(window.location.pathname)
       const scopedInit = withStoreCurrencyScopeHeader(init, scope)
 

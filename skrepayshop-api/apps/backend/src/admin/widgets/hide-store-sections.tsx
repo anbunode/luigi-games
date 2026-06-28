@@ -1,19 +1,11 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { useLayoutEffect } from "react"
 
-const CURRENCY_HEADINGS = new Set(["currencies", "monedas", "locales", "idiomas"])
+const HIDDEN_HEADINGS = new Set(["locales", "idiomas", "metadata", "metadatos"])
 
 const hideStoreSectionsStyles = `
-  body[data-skrepay-store-settings] .flex.flex-col.gap-y-3 > div.divide-y.p-0:has(> div h2) {
-    display: none !important;
-  }
-
   body[data-skrepay-store-settings] .flex.flex-col.gap-y-3 > div:has(a[href="metadata/edit"]),
   body[data-skrepay-store-settings] .flex.flex-col.gap-y-3 > div:has(a[href$="/metadata/edit"]) {
-    display: none !important;
-  }
-
-  body[data-skrepay-store-settings] .flex.flex-col.gap-y-3 > div.flex.items-center.justify-between.px-6.py-4:has(h2) {
     display: none !important;
   }
 `
@@ -22,14 +14,14 @@ function isStoreSettingsPage() {
   return /\/settings\/store\/?$/.test(window.location.pathname)
 }
 
-function hideCurrencySections() {
+function hideStoreSections() {
   if (!isStoreSettingsPage()) {
     return
   }
 
   document.querySelectorAll("h2").forEach((heading) => {
     const label = heading.textContent?.trim().toLowerCase()
-    if (!label || !CURRENCY_HEADINGS.has(label)) {
+    if (!label || !HIDDEN_HEADINGS.has(label)) {
       return
     }
 
@@ -43,7 +35,7 @@ function hideCurrencySections() {
 function syncStoreSettingsScope() {
   if (isStoreSettingsPage()) {
     document.body.setAttribute("data-skrepay-store-settings", "true")
-    hideCurrencySections()
+    hideStoreSections()
     return
   }
 

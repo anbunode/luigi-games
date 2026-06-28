@@ -3,6 +3,7 @@ import {
   tenantAdminDatabaseScopeMiddleware,
   tenantStoreDatabaseScopeMiddleware,
 } from "../lib/tenant-db-scope"
+import { tenantRegionTaxSyncMiddleware } from "../lib/tenant-region-tax-middleware"
 import {
   tenantAdminSalesChannelByIdGetShim,
   tenantAdminSalesChannelsShim,
@@ -47,6 +48,16 @@ export default defineMiddlewares({
       method: "GET",
       matcher: "/admin/sales-channels/:id",
       middlewares: [tenantAdminSalesChannelByIdGetShim],
+    },
+    {
+      method: "POST",
+      matcher: "/admin/regions",
+      middlewares: [tenantRegionTaxSyncMiddleware],
+    },
+    {
+      method: "POST",
+      matcher: "/admin/regions/:id",
+      middlewares: [tenantRegionTaxSyncMiddleware],
     },
     {
       matcher: /^\/store(\/|$)/,

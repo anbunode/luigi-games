@@ -235,14 +235,6 @@ export async function syncStoreSupportedCurrencies(
   await pool.query("begin")
 
   try {
-    await pool.query(
-      `update ${schemaQ}.store_currency
-       set deleted_at = now(), updated_at = now()
-       where store_id = $1 and deleted_at is null
-         and not (currency_code = any($2::text[]))`,
-      [storeId, codes]
-    )
-
     for (const entry of currencies) {
       const code = entry.currency_code.toLowerCase()
       const isDefault = code === defaultCode
