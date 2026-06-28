@@ -26,13 +26,29 @@ type KnexLike = {
   client?: KnexClient
 }
 
+type ConnectionLike = {
+  execute?: (sql: string, params?: unknown[]) => Promise<unknown>
+  getKnex?: () => KnexLike
+}
+
+function searchPathSql(schema: string | null | undefined): string {
+  return schema
+    ? `SET search_path TO ${quoteIdentifier(schema)}`
+    : "SET search_path TO public"
+}
+
+async function applySearchPathOnConnection(
+  execute: (sql: string, params?: unknown[]) => Promise<unknown>,
+  schema: string | null | undefined
+) {
+  await execute(searchPathSql(schema))
+}
+
 async function setClientSearchPath(
   client: PgClient,
   schema: string | null | undefined
 ) {
-  const sql = schema
-    ? `SET search_path TO ${quoteIdentifier(schema)}`
-    : "SET search_path TO public"
+  const sql = searchPathSql(schema)
 
   if (typeof client.query !== "function") {
     return
@@ -125,6 +141,31 @@ export function patchKnex(knex: KnexLike | null | undefined): void {
   patchKnexClient(knex?.client)
 }
 
+function patchManagerConnection(connection: ConnectionLike | null | undefined): void {
+  if (!connection?.execute || patchedPools.has(connection)) {
+    return
+  }
+
+  patchedPools.add(connection)
+
+  const originalExecute = connection.execute.bind(connection)
+  connection.execute = async (sql: string, params?: unknown[]) => {
+    const schema = getActiveTenantSchema()
+
+    if (
+      schema &&
+      typeof sql === "string" &&
+      !sql.trimStart().toUpperCase().startsWith("SET SEARCH_PATH")
+    ) {
+      await applySearchPathOnConnection(originalExecute, schema)
+    }
+
+    return originalExecute(sql, params)
+  }
+
+  patchKnex(connection.getKnex?.())
+}
+
 export function ensureTenantPoolPatches(scope: MedusaContainer): void {
   try {
     const knex = scope.resolve(ContainerRegistrationKeys.PG_CONNECTION) as KnexLike
@@ -137,10 +178,7 @@ export function ensureTenantPoolPatches(scope: MedusaContainer): void {
     const manager = scope.resolve(
       ContainerRegistrationKeys.MANAGER
     ) as EntityManager
-    const connection = manager.getConnection() as {
-      getKnex?: () => KnexLike
-    }
-    patchKnex(connection.getKnex?.())
+    patchManagerConnection(manager.getConnection() as ConnectionLike)
   } catch {
     // ignore
   }
