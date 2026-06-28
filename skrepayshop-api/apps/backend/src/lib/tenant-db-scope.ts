@@ -179,6 +179,7 @@ async function applyTenantScope(
   }
 
   ensureTenantPoolPatches(req.scope)
+  await setTenantSearchPath(req.scope, schema)
 
   runWithTenantSchema(schema, () => {
     ;(req as ScopedRequest).skrepayTenantSchema = schema
