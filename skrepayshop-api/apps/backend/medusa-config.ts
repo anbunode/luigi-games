@@ -31,8 +31,5 @@ module.exports = defineConfig({
     storefront_theme: {
       resolve: "./src/modules/storefront-theme",
     },
-    skrepay_region: {
-      resolve: "./src/modules/skrepay_region",
-    },
   },
 })

@@ -4,7 +4,6 @@ import {
   tenantStoreDatabaseScopeMiddleware,
 } from "../lib/tenant-db-scope"
 import {
-  tenantAdminRegionsShim,
   tenantAdminSalesChannelsShim,
   tenantAdminStoresShim,
   tenantAdminUsersMeShim,
@@ -25,11 +24,6 @@ export default defineMiddlewares({
       method: "GET",
       matcher: "/admin/stores",
       middlewares: [tenantAdminStoresShim],
-    },
-    {
-      method: "GET",
-      matcher: "/admin/regions",
-      middlewares: [tenantAdminRegionsShim],
     },
     {
       method: "GET",

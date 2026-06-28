@@ -146,37 +146,6 @@ export async function tenantAdminStoresShim(
   }
 }
 
-export async function tenantAdminRegionsShim(
-  req: MedusaRequest,
-  res: MedusaResponse,
-  next: MedusaNextFunction
-) {
-  try {
-    const schema = await resolveRequestSchema(req)
-    if (!schema) {
-      next()
-      return
-    }
-
-    const result = await getPlatformPool().query(
-      `select
-         id, name, currency_code, automatic_taxes, metadata, created_at, updated_at
-       from ${quoteSchema(schema)}.region
-       where deleted_at is null
-       order by created_at asc`
-    )
-
-    res.json({
-      regions: result.rows,
-      count: result.rows.length,
-      offset: 0,
-      limit: result.rows.length,
-    })
-  } catch (error) {
-    next(error)
-  }
-}
-
 export async function tenantAdminSalesChannelsShim(
   req: MedusaRequest,
   res: MedusaResponse,

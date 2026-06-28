@@ -14,7 +14,7 @@ type Props = {
 export function RegionConfigItem({ icon, label, value, onClick, comingSoon }: Props) {
   const handleClick = () => {
     if (comingSoon) {
-      // Visual feedback — no dead click
+      onClick?.()
       return
     }
     onClick?.()
