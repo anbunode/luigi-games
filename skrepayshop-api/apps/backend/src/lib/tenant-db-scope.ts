@@ -197,7 +197,8 @@ async function applyTenantScope(
 
   res.on("finish", cleanup)
   res.on("close", cleanup)
-  next()
+
+  runWithTenantSchema(schema, () => next())
 }
 
 export async function tenantAdminDatabaseScopeMiddleware(

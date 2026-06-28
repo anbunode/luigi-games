@@ -58,7 +58,11 @@ export async function tenantRegionTaxSyncMiddleware(
       (typeof req.params.id === "string" ? req.params.id : null)
 
     if (regionId && res.statusCode < 400) {
-      syncTaxesForRegion(schema, regionId).catch(() => undefined)
+      syncTaxesForRegion(schema, regionId).catch((err) => {
+        req.scope.resolve("logger").error(
+          `[tenant-region-tax-sync] failed for region ${regionId}: ${err?.message ?? err}`
+        )
+      })
     }
 
     return originalJson(body)

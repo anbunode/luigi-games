@@ -22,21 +22,22 @@ export async function syncTaxesForRegion(
 ): Promise<{ tax_regions: number; tax_rates: number; automatic_taxes: boolean }> {
   const schemaQ = quoteIdent(schema)
   const pool = getPlatformPool()
-
-  const countries = await pool.query<RegionCountryRow>(
-    `select lower(rc.iso_2) as iso_2, rc.display_name
-     from ${schemaQ}.region_country rc
-     where rc.deleted_at is null and rc.region_id = $1`,
-    [regionId]
-  )
+  const client = await pool.connect()
 
   let taxRegions = 0
   let taxRates = 0
   let hasTaxableCountry = false
 
-  await pool.query("begin")
-
   try {
+    await client.query("begin")
+
+    const countries = await client.query<RegionCountryRow>(
+      `select lower(rc.iso_2) as iso_2, rc.display_name
+       from ${schemaQ}.region_country rc
+       where rc.deleted_at is null and rc.region_id = $1`,
+      [regionId]
+    )
+
     for (const country of countries.rows) {
       const iso2 = country.iso_2.toLowerCase()
       const taxPercent = getDefaultTaxRateForCountry(iso2)
@@ -47,7 +48,7 @@ export async function syncTaxesForRegion(
 
       hasTaxableCountry = true
 
-      const existingTaxRegion = await pool.query<{ id: string }>(
+      const existingTaxRegion = await client.query<{ id: string }>(
         `select id from ${schemaQ}.tax_region
          where deleted_at is null
            and lower(country_code) = $1
@@ -61,7 +62,7 @@ export async function syncTaxesForRegion(
 
       if (!taxRegionId) {
         taxRegionId = generateEntityId(undefined, "txreg")
-        await pool.query(
+        await client.query(
           `insert into ${schemaQ}.tax_region
              (id, provider_id, country_code, created_at, updated_at)
            values ($1, $2, $3, now(), now())`,
@@ -74,7 +75,7 @@ export async function syncTaxesForRegion(
       const rateCode = `vat_${iso2}`
       const rateName = `IVA ${country.display_name ?? iso2.toUpperCase()} (${rateLabel}%)`
 
-      const existingRate = await pool.query<{ id: string }>(
+      const existingRate = await client.query<{ id: string }>(
         `select id from ${schemaQ}.tax_rate
          where deleted_at is null and tax_region_id = $1 and code = $2
          limit 1`,
@@ -82,14 +83,14 @@ export async function syncTaxesForRegion(
       )
 
       if (existingRate.rows[0]?.id) {
-        await pool.query(
+        await client.query(
           `update ${schemaQ}.tax_rate
            set rate = $2, name = $3, is_default = true, updated_at = now()
            where id = $1`,
           [existingRate.rows[0].id, taxPercent, rateName]
         )
       } else {
-        await pool.query(
+        await client.query(
           `insert into ${schemaQ}.tax_rate
              (id, rate, code, name, is_default, is_combinable, tax_region_id, created_at, updated_at)
            values ($1, $2, $3, $4, true, false, $5, now(), now())`,
@@ -105,17 +106,19 @@ export async function syncTaxesForRegion(
       }
     }
 
-    await pool.query(
+    await client.query(
       `update ${schemaQ}.region
        set automatic_taxes = $2, updated_at = now()
        where id = $1 and deleted_at is null`,
       [regionId, hasTaxableCountry]
     )
 
-    await pool.query("commit")
+    await client.query("commit")
   } catch (error) {
-    await pool.query("rollback")
+    await client.query("rollback")
     throw error
+  } finally {
+    client.release()
   }
 
   return {
