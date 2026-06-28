@@ -4,6 +4,7 @@ import type {
   MedusaResponse,
 } from "@medusajs/framework/http"
 import { getPlatformPool } from "./platform-db"
+import { releaseRegionCountries } from "./tenant-region-countries"
 import {
   resolveTenantForAdminRequest,
   resolveTenantSchema,
@@ -50,6 +51,8 @@ async function softDeleteTenantRegion(schema: string, regionId: string) {
      where default_region_id = $1 and deleted_at is null`,
     [regionId]
   )
+
+  await releaseRegionCountries(schema, regionId)
 }
 
 export async function tenantRegionDeleteMiddleware(

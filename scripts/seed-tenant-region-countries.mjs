@@ -36,17 +36,32 @@ if (!schema) {
 
 const schemaQ = `"${schema}"`
 
-const before = await client.query(
-  `select count(*)::int total,
-          count(*) filter (where region_id is null)::int unassigned
-   from ${schemaQ}.region_country`
-)
-console.log("antes", before.rows[0])
+async function audit(label) {
+  const unassigned = await client.query(
+    `select count(*)::int c from ${schemaQ}.region_country where region_id is null`
+  )
+  const missing = await client.query(
+    `select count(*)::int c
+     from (
+       select distinct lower(iso_2) as iso_2 from public.region_country
+     ) pub
+     where not exists (
+       select 1 from ${schemaQ}.region_country t where lower(t.iso_2) = pub.iso_2
+     )`
+  )
+  const orphaned = await client.query(
+    `select count(*)::int c
+     from ${schemaQ}.region_country rc
+     inner join ${schemaQ}.region r on r.id = rc.region_id and r.deleted_at is not null`
+  )
+  console.log(label, {
+    unassigned: unassigned.rows[0].c,
+    missing_vs_public: missing.rows[0].c,
+    orphaned_on_deleted_regions: orphaned.rows[0].c,
+  })
+}
 
-const publicPool = await client.query(
-  `select count(*)::int c from public.region_country where region_id is null`
-)
-console.log("public pool", publicPool.rows[0].c)
+await audit("antes")
 
 if (!confirmed) {
   console.log("dry run — usa --confirm")
@@ -56,33 +71,43 @@ if (!confirmed) {
 
 await client.query("begin")
 try {
-  await client.query(
+  const released = await client.query(
+    `update ${schemaQ}.region_country rc
+     set region_id = null, updated_at = now()
+     from ${schemaQ}.region r
+     where rc.region_id = r.id and r.deleted_at is not null`
+  )
+
+  const inserted = await client.query(
     `insert into ${schemaQ}.region_country
-       (iso_2, iso_3, num_code, name, display_name, region_id, created_at, updated_at, deleted_at)
-     select iso_2, iso_3, num_code, name, display_name, null, now(), now(), null
-     from public.region_country
-     where region_id is null
-     on conflict (iso_2) do update
-       set iso_3 = excluded.iso_3,
-           num_code = excluded.num_code,
-           name = excluded.name,
-           display_name = excluded.display_name,
-           deleted_at = null,
-           updated_at = now()
-     where ${schemaQ}.region_country.region_id is null`
+       (iso_2, iso_3, num_code, name, display_name, region_id, created_at, updated_at)
+     select catalog.iso_2, catalog.iso_3, catalog.num_code, catalog.name, catalog.display_name, null, now(), now()
+     from (
+       select distinct on (lower(iso_2))
+         iso_2, iso_3, num_code, name, display_name
+       from public.region_country
+       order by lower(iso_2), region_id nulls first
+     ) catalog
+     where not exists (
+       select 1 from ${schemaQ}.region_country t where lower(t.iso_2) = lower(catalog.iso_2)
+     )`
   )
 
   await client.query("commit")
-
-  const after = await client.query(
-    `select count(*)::int total,
-            count(*) filter (where region_id is null)::int unassigned
-     from ${schemaQ}.region_country`
-  )
-  console.log("despues", after.rows[0])
+  console.log("released", released.rowCount, "inserted", inserted.rowCount)
 } catch (e) {
   await client.query("rollback")
   throw e
+}
+
+await audit("despues")
+
+for (const code of ["fr", "de", "es"]) {
+  const r = await client.query(
+    `select iso_2, region_id from ${schemaQ}.region_country where lower(iso_2) = $1`,
+    [code]
+  )
+  console.log(code, r.rows[0] ?? "MISSING")
 }
 
 await client.end()

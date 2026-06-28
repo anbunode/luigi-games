@@ -1,4 +1,5 @@
 import { Client } from "pg"
+import { syncTenantRegionCountryPool } from "./tenant-region-countries"
 
 /** Tablas de referencia Medusa que deben existir en cada schema tenant. */
 const REFERENCE_TABLES = [
@@ -68,57 +69,11 @@ export async function seedTenantReferenceData(
       report[table] = `seeded ${after.rows[0].c} rows`
     }
 
-    await seedTenantRegionCountryPool(client, schema, schemaQ, report)
+    const poolSync = await syncTenantRegionCountryPool(schema)
+    report.region_country = `unassigned=${poolSync.unassigned} released=${poolSync.released} inserted=${poolSync.inserted}`
 
     return report
   } finally {
     await client.end()
   }
-}
-
-async function seedTenantRegionCountryPool(
-  client: Client,
-  schema: string,
-  schemaQ: string,
-  report: Record<string, string>
-) {
-  const exists = await client.query<{ reg: string | null }>(
-    `select to_regclass($1) as reg`,
-    [`${schema}.region_country`]
-  )
-
-  if (!exists.rows[0]?.reg) {
-    report.region_country = "missing_table"
-    return
-  }
-
-  const unassigned = await client.query<{ c: number }>(
-    `select count(*)::int as c from ${schemaQ}.region_country where region_id is null`
-  )
-
-  if (unassigned.rows[0].c >= 200) {
-    report.region_country = `skipped (${unassigned.rows[0].c} unassigned)`
-    return
-  }
-
-  const result = await client.query(
-    `insert into ${schemaQ}.region_country
-       (iso_2, iso_3, num_code, name, display_name, region_id, created_at, updated_at, deleted_at)
-     select iso_2, iso_3, num_code, name, display_name, null, now(), now(), null
-     from public.region_country
-     where region_id is null
-     on conflict (iso_2) do update
-       set iso_3 = excluded.iso_3,
-           num_code = excluded.num_code,
-           name = excluded.name,
-           display_name = excluded.display_name,
-           deleted_at = null,
-           updated_at = now()
-     where ${schemaQ}.region_country.region_id is null`
-  )
-
-  const after = await client.query<{ c: number }>(
-    `select count(*)::int as c from ${schemaQ}.region_country where region_id is null`
-  )
-  report.region_country = `seeded ${after.rows[0].c} unassigned (${result.rowCount} upserted)`
 }
