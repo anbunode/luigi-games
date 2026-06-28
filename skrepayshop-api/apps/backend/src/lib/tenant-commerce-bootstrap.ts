@@ -59,12 +59,17 @@ export async function seedTenantCommerceData(
       [storeId, shopName, salesChannelId, regionId]
     )
 
-    await client.query(
-      `insert into ${schemaQ}.store_currency (id, currency_code, store_id, is_default, created_at, updated_at)
-       values ($1, 'eur', $2, true, now(), now())
-       on conflict do nothing`,
-      [generateEntityId(undefined, "stocur"), storeId]
-    )
+    for (const [currencyCode, isDefault] of [
+      ["eur", true],
+      ["usd", false],
+    ] as const) {
+      await client.query(
+        `insert into ${schemaQ}.store_currency (id, currency_code, store_id, is_default, created_at, updated_at)
+         values ($1, $2, $3, $4, now(), now())
+         on conflict do nothing`,
+        [generateEntityId(undefined, "stocur"), currencyCode, storeId, isDefault]
+      )
+    }
 
     await client.query(
       `insert into ${schemaQ}.region_country (iso_2, iso_3, num_code, name, display_name, region_id, created_at, updated_at)

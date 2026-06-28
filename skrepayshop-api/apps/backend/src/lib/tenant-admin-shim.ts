@@ -114,6 +114,44 @@ export async function tenantAdminUsersMeShim(
   }
 }
 
+type StoreCurrencyRow = {
+  id: string
+  currency_code: string
+  is_default: boolean
+  store_id: string
+  created_at: Date
+  updated_at: Date
+  deleted_at: Date | null
+}
+
+async function loadStoreSupportedCurrencies(
+  schema: string,
+  storeIds: string[]
+): Promise<Map<string, StoreCurrencyRow[]>> {
+  const byStore = new Map<string, StoreCurrencyRow[]>()
+
+  if (storeIds.length === 0) {
+    return byStore
+  }
+
+  const result = await getPlatformPool().query<StoreCurrencyRow>(
+    `select
+       id, currency_code, is_default, store_id, created_at, updated_at, deleted_at
+     from ${quoteSchema(schema)}.store_currency
+     where deleted_at is null and store_id = any($1::text[])
+     order by is_default desc, currency_code asc`,
+    [storeIds]
+  )
+
+  for (const row of result.rows) {
+    const existing = byStore.get(row.store_id) ?? []
+    existing.push(row)
+    byStore.set(row.store_id, existing)
+  }
+
+  return byStore
+}
+
 export async function tenantAdminStoresShim(
   req: MedusaRequest,
   res: MedusaResponse,
@@ -135,11 +173,22 @@ export async function tenantAdminStoresShim(
        order by created_at asc`
     )
 
+    const storeIds = result.rows.map((row: { id: string }) => row.id)
+    const supportedCurrenciesByStore = await loadStoreSupportedCurrencies(
+      schema,
+      storeIds
+    )
+
+    const stores = result.rows.map((row: { id: string }) => ({
+      ...row,
+      supported_currencies: supportedCurrenciesByStore.get(row.id) ?? [],
+    }))
+
     res.json({
-      stores: result.rows,
-      count: result.rows.length,
+      stores,
+      count: stores.length,
       offset: 0,
-      limit: result.rows.length,
+      limit: stores.length,
     })
   } catch (error) {
     next(error)
