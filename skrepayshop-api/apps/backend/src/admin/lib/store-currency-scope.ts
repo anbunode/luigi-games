@@ -1,54 +1,34 @@
-export type StoreCurrencyScope = "catalog" | "pricing" | "regions"
-
-export const STORE_CURRENCY_SCOPE_HEADER = "x-skrepay-currency-scope"
-
 /**
- * Cada sección del panel recibe el scope adecuado pero todas leen
- * del mismo catálogo `{tenant}.currency` vía `store_currency`:
- * - catalog: tienda + crear/editar región (todas las monedas)
- * - pricing: productos / precios (solo monedas de regiones)
- * - regions: resto del panel (monedas de regiones activas)
+ * Modos de moneda del panel — fuente única de verdad para rutas.
+ *
+ * - catalog: tienda, regiones, impuestos (catálogo completo, estable)
+ * - pricing: productos / precios (solo monedas de regiones activas)
  */
-export function resolveStoreCurrencyScope(pathname: string): StoreCurrencyScope {
-  if (
+export type StoreCurrencyMode = "catalog" | "pricing"
+
+export const SKREPAY_ROUTE_CHANGE_EVENT = "skrepay:route-change"
+
+export function isPricingContext(pathname: string): boolean {
+  return (
     /\/products\/create\b/.test(pathname) ||
     /\/products\/[^/]+\/prices\b/.test(pathname) ||
     (/\/products\/[^/]+$/.test(pathname) && !/\/products$/.test(pathname))
-  ) {
-    return "pricing"
-  }
-
-  if (
-    /\/settings\/regions(\/create|\/[^/]+)?\/?$/.test(pathname) ||
-    /\/settings\/store(\/edit)?\/?$/.test(pathname) ||
-    /\/settings\/tax-regions/.test(pathname)
-  ) {
-    return "catalog"
-  }
-
-  return "regions"
+  )
 }
 
-export const SKREPAY_ROUTE_CHANGE_EVENT = "skrepay:route-change"
+export function isCatalogContext(pathname: string): boolean {
+  return !isPricingContext(pathname)
+}
+
+export function resolveStoreCurrencyMode(pathname: string): StoreCurrencyMode {
+  return isPricingContext(pathname) ? "pricing" : "catalog"
+}
 
 export function notifyRouteChange() {
   window.dispatchEvent(new Event(SKREPAY_ROUTE_CHANGE_EVENT))
 }
 
-export function withStoreCurrencyScopeHeader(
-  init: RequestInit | undefined,
-  scope: StoreCurrencyScope
-): RequestInit {
-  const headers = new Headers(init?.headers ?? undefined)
-  headers.set(STORE_CURRENCY_SCOPE_HEADER, scope)
-  return { ...init, headers }
-}
+/** @deprecated El API de tienda ya no usa scopes por header; solo pricing vía endpoint dedicado */
+export const STORE_CURRENCY_SCOPE_HEADER = "x-skrepay-currency-scope"
 
-export function shouldAttachStoreCurrencyScope(
-  method: string,
-  url: string
-): boolean {
-  return (
-    (method === "GET" || method === "POST") && url.includes("/admin/stores")
-  )
-}
+export type StoreCurrencyScope = "catalog" | "pricing" | "regions"

@@ -8,7 +8,6 @@ import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/util
 import { getPlatformPool } from "./platform-db"
 import {
   loadStoreCurrenciesForStores,
-  readStoreCurrencyScopeFromMedusaRequest,
   syncStoreSupportedCurrencies,
   type StoreCurrencyInput,
 } from "./tenant-store-currencies"
@@ -122,14 +121,12 @@ export async function tenantAdminUsersMeShim(
 
 async function attachSupportedCurrencies<T extends { id: string }>(
   schema: string,
-  stores: T[],
-  req: MedusaRequest
+  stores: T[]
 ) {
-  const scope = readStoreCurrencyScopeFromMedusaRequest(req)
   const supportedCurrenciesByStore = await loadStoreCurrenciesForStores(
     schema,
     stores.map((row) => row.id),
-    scope
+    "catalog"
   )
 
   return stores.map((row) => ({
@@ -198,7 +195,7 @@ export async function tenantAdminStoreByIdGetShim(
       )
     }
 
-    const [fullStore] = await attachSupportedCurrencies(schema, [store], req)
+    const [fullStore] = await attachSupportedCurrencies(schema, [store])
     res.json({ store: fullStore })
   } catch (error) {
     next(error)
@@ -288,7 +285,7 @@ export async function tenantAdminStoreByIdPostShim(
     }
 
     const updatedRows = await loadStoreRows(schema, id)
-    const [fullStore] = await attachSupportedCurrencies(schema, updatedRows, req)
+    const [fullStore] = await attachSupportedCurrencies(schema, updatedRows)
     res.json({ store: fullStore })
   } catch (error) {
     next(error)
@@ -308,7 +305,7 @@ export async function tenantAdminStoresShim(
     }
 
     const rows = await loadStoreRows(schema)
-    const stores = await attachSupportedCurrencies(schema, rows, req)
+    const stores = await attachSupportedCurrencies(schema, rows)
 
     res.json({
       stores,

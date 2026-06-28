@@ -145,6 +145,30 @@ export type StoreCurrencyInput = {
   is_default?: boolean
 }
 
+export async function setStoreDefaultCurrency(
+  schema: string,
+  storeId: string,
+  currencyCode: string
+): Promise<void> {
+  const schemaQ = quoteIdent(schema)
+  const pool = getPlatformPool()
+  const code = currencyCode.toLowerCase()
+
+  await pool.query(
+    `update ${schemaQ}.store_currency
+     set is_default = false, updated_at = now()
+     where store_id = $1 and deleted_at is null`,
+    [storeId]
+  )
+
+  await pool.query(
+    `update ${schemaQ}.store_currency
+     set is_default = true, updated_at = now()
+     where store_id = $1 and deleted_at is null and currency_code = $2`,
+    [storeId, code]
+  )
+}
+
 /**
  * Enlaza todas las monedas del catálogo Medusa (tabla currency) a la tienda.
  * Así el panel nativo muestra el listado completo en regiones y en editar tienda.
@@ -222,6 +246,19 @@ export async function syncStoreSupportedCurrencies(
   currencies: StoreCurrencyInput[]
 ): Promise<void> {
   if (!currencies.length) {
+    return
+  }
+
+  const defaultEntries = currencies.filter((entry) => entry.is_default)
+  const isDefaultOnlyChange =
+    defaultEntries.length === 1 && currencies.length <= 3
+
+  if (isDefaultOnlyChange) {
+    await setStoreDefaultCurrency(
+      schema,
+      storeId,
+      defaultEntries[0].currency_code
+    )
     return
   }
 

@@ -1,20 +1,96 @@
 import { getPlatformLoginUrl } from "./platform-url"
 import {
+  isPricingContext,
   notifyRouteChange,
-  resolveStoreCurrencyScope,
-  shouldAttachStoreCurrencyScope,
-  STORE_CURRENCY_SCOPE_HEADER,
-  withStoreCurrencyScopeHeader,
 } from "./store-currency-scope"
 
 declare global {
   interface Window {
     __skrepayAuthBridgeInstalled?: boolean
+    __skrepayPricingCurrenciesCache?: Array<{
+      id: string
+      currency_code: string
+      is_default: boolean
+      store_id: string
+      created_at: string
+      updated_at: string
+      deleted_at: string | null
+    }>
   }
 }
 
 function getLogoutUrl() {
   return `${window.location.origin}/skrepay/logout`
+}
+
+function isStoreApiUrl(url: string) {
+  return /\/admin\/stores(\/|$|\?)/.test(url)
+}
+
+function readAuthHeaders(init?: RequestInit, input?: RequestInfo | URL): Headers {
+  const headers = new Headers(init?.headers ?? undefined)
+
+  if (input instanceof Request) {
+    input.headers.forEach((value, key) => {
+      if (!headers.has(key)) {
+        headers.set(key, value)
+      }
+    })
+  }
+
+  return headers
+}
+
+async function loadPricingCurrencies(
+  originalFetch: typeof fetch,
+  authHeaders: Headers
+): Promise<NonNullable<typeof window.__skrepayPricingCurrenciesCache>> {
+  if (window.__skrepayPricingCurrenciesCache) {
+    return window.__skrepayPricingCurrenciesCache
+  }
+
+  const headers = new Headers(authHeaders)
+  const response = await originalFetch("/admin/skrepay/pricing-currencies", {
+    method: "GET",
+    credentials: "include",
+    headers,
+  })
+
+  if (!response.ok) {
+    return []
+  }
+
+  const body = await response.json()
+  window.__skrepayPricingCurrenciesCache = body.supported_currencies ?? []
+  return window.__skrepayPricingCurrenciesCache ?? []
+}
+
+function patchStorePayload(
+  body: Record<string, unknown>,
+  pricingCurrencies: NonNullable<typeof window.__skrepayPricingCurrenciesCache>
+) {
+  if (Array.isArray(body.stores)) {
+    return {
+      ...body,
+      stores: body.stores.map((store) =>
+        store && typeof store === "object"
+          ? { ...store, supported_currencies: pricingCurrencies }
+          : store
+      ),
+    }
+  }
+
+  if (body.store && typeof body.store === "object") {
+    return {
+      ...body,
+      store: {
+        ...(body.store as Record<string, unknown>),
+        supported_currencies: pricingCurrencies,
+      },
+    }
+  }
+
+  return body
 }
 
 export function installAuthBridge() {
@@ -37,23 +113,6 @@ export function installAuthBridge() {
           ? input.url
           : String(input)
 
-    let nextInput: RequestInfo | URL = input
-    let nextInit = init
-
-    if (shouldAttachStoreCurrencyScope(method, url)) {
-      const scope = resolveStoreCurrencyScope(window.location.pathname)
-      const scopedInit = withStoreCurrencyScopeHeader(init, scope)
-
-      if (input instanceof Request) {
-        const headers = new Headers(input.headers)
-        headers.set(STORE_CURRENCY_SCOPE_HEADER, scope)
-        nextInput = new Request(input, { headers })
-        nextInit = undefined
-      } else {
-        nextInit = scopedInit
-      }
-    }
-
     if (method === "DELETE" && url.includes("/auth/session")) {
       window.location.replace(logoutUrl)
       return new Response(JSON.stringify({ success: true }), {
@@ -62,7 +121,7 @@ export function installAuthBridge() {
       })
     }
 
-    const response = await originalFetch(nextInput, nextInit)
+    const response = await originalFetch(input, init)
 
     if (
       method === "DELETE" &&
@@ -72,7 +131,35 @@ export function installAuthBridge() {
       window.location.replace(logoutUrl)
     }
 
-    return response
+    const shouldPatchStoreCurrencies =
+      method === "GET" &&
+      isStoreApiUrl(url) &&
+      isPricingContext(window.location.pathname) &&
+      response.ok
+
+    if (!shouldPatchStoreCurrencies) {
+      return response
+    }
+
+    try {
+      const body = (await response.clone().json()) as Record<string, unknown>
+      const authHeaders = readAuthHeaders(init, input)
+      const pricingCurrencies = await loadPricingCurrencies(
+        originalFetch,
+        authHeaders
+      )
+      const patched = patchStorePayload(body, pricingCurrencies)
+      const headers = new Headers(response.headers)
+      headers.set("Content-Type", "application/json")
+
+      return new Response(JSON.stringify(patched), {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      })
+    } catch {
+      return response
+    }
   }
 
   const blockLoginNavigation = (target: string | URL | null | undefined) => {
@@ -90,6 +177,7 @@ export function installAuthBridge() {
       return
     }
     const result = originalPushState(...args)
+    window.__skrepayPricingCurrenciesCache = undefined
     notifyRouteChange()
     return result
   }) as History["pushState"]
@@ -101,6 +189,7 @@ export function installAuthBridge() {
       return
     }
     const result = originalReplaceState(...args)
+    window.__skrepayPricingCurrenciesCache = undefined
     notifyRouteChange()
     return result
   }) as History["replaceState"]
