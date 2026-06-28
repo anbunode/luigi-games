@@ -384,3 +384,45 @@ export async function tenantAdminSalesChannelsShim(
     next(error)
   }
 }
+
+export async function tenantAdminSalesChannelByIdGetShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveRequestSchema(req)
+    if (!schema) {
+      next()
+      return
+    }
+
+    const id = req.params.id
+
+    if (!id) {
+      next()
+      return
+    }
+
+    const result = await getPlatformPool().query(
+      `select
+         id, name, description, is_disabled, metadata, created_at, updated_at
+       from ${quoteSchema(schema)}.sales_channel
+       where id = $1 and deleted_at is null`,
+      [id]
+    )
+
+    const sales_channel = result.rows[0]
+
+    if (!sales_channel) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `Sales channel with id: ${id} was not found`
+      )
+    }
+
+    res.json({ sales_channel })
+  } catch (error) {
+    next(error)
+  }
+}
