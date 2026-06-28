@@ -1,4 +1,9 @@
 import { getPlatformLoginUrl } from "./platform-url"
+import {
+  resolveStoreCurrencyScope,
+  STORE_CURRENCY_SCOPE_HEADER,
+  notifyRouteChange,
+} from "./store-currency-scope"
 
 declare global {
   interface Window {
@@ -8,6 +13,21 @@ declare global {
 
 function getLogoutUrl() {
   return `${window.location.origin}/skrepay/logout`
+}
+
+function shouldAttachCurrencyScope(url: string, method: string) {
+  return method === "GET" && /\/admin\/stores(\/|$|\?)/.test(url)
+}
+
+function withCurrencyScopeHeader(init?: RequestInit): RequestInit {
+  const scope = resolveStoreCurrencyScope(window.location.pathname)
+  const headers = new Headers(init?.headers ?? {})
+
+  if (!headers.has(STORE_CURRENCY_SCOPE_HEADER)) {
+    headers.set(STORE_CURRENCY_SCOPE_HEADER, scope)
+  }
+
+  return { ...init, headers }
 }
 
 export function installAuthBridge() {
@@ -38,7 +58,25 @@ export function installAuthBridge() {
       })
     }
 
-    const response = await originalFetch(input, init)
+    let requestInput: RequestInfo | URL = input
+    let requestInit = init
+
+    if (shouldAttachCurrencyScope(url, method)) {
+      if (input instanceof Request) {
+        const headers = new Headers(input.headers)
+        if (!headers.has(STORE_CURRENCY_SCOPE_HEADER)) {
+          headers.set(
+            STORE_CURRENCY_SCOPE_HEADER,
+            resolveStoreCurrencyScope(window.location.pathname)
+          )
+        }
+        requestInput = new Request(input, { headers })
+      } else {
+        requestInit = withCurrencyScopeHeader(init)
+      }
+    }
+
+    const response = await originalFetch(requestInput, requestInit)
 
     if (
       method === "DELETE" &&
@@ -65,7 +103,9 @@ export function installAuthBridge() {
       window.location.replace(loginUrl)
       return
     }
-    return originalPushState(...args)
+    const result = originalPushState(...args)
+    notifyRouteChange()
+    return result
   }) as History["pushState"]
 
   const originalReplaceState = history.replaceState.bind(history)
@@ -74,6 +114,8 @@ export function installAuthBridge() {
       window.location.replace(loginUrl)
       return
     }
-    return originalReplaceState(...args)
+    const result = originalReplaceState(...args)
+    notifyRouteChange()
+    return result
   }) as History["replaceState"]
 }

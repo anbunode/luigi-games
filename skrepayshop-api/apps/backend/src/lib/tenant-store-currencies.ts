@@ -39,16 +39,21 @@ export function readStoreCurrencyScopeFromRequest(input: {
     return raw
   }
 
-  return "regions"
+  return "catalog"
 }
 
 export function readStoreCurrencyScopeFromMedusaRequest(
   req: MedusaRequest
 ): StoreCurrencyScope {
-  const raw = req.headers[STORE_CURRENCY_SCOPE_HEADER]
+  const header = req.headers[STORE_CURRENCY_SCOPE_HEADER]
+  const queryScope =
+    typeof req.query.currency_scope === "string"
+      ? req.query.currency_scope
+      : undefined
 
   return readStoreCurrencyScopeFromRequest({
-    header_scope: typeof raw === "string" ? raw : undefined,
+    header_scope: typeof header === "string" ? header : undefined,
+    currency_scope: queryScope,
   })
 }
 
@@ -156,6 +161,73 @@ export async function loadStoreEnabledCurrenciesForAdmin(
       rounding: row.rounding,
     },
   }))
+}
+
+/** Catálogo completo con formato AdminStoreCurrency (p. ej. crear región) */
+export async function loadMasterCurrencyCatalogForAdmin(
+  schema: string,
+  storeId: string
+): Promise<AdminStoreCurrencyRow[]> {
+  const schemaQ = quoteIdent(schema)
+  const result = await getPlatformPool().query<{
+    code: string
+    symbol: string
+    symbol_native: string
+    name: string
+    decimal_digits: number
+    rounding: number | string
+    is_default: boolean
+  }>(
+    `select
+       c.code,
+       c.symbol,
+       c.symbol_native,
+       c.name,
+       c.decimal_digits,
+       c.rounding,
+       exists (
+         select 1
+         from ${schemaQ}.store_currency sc
+         where sc.store_id = $1
+           and sc.deleted_at is null
+           and sc.is_default = true
+           and lower(sc.currency_code) = lower(c.code)
+       ) as is_default
+     from ${schemaQ}.currency c
+     where c.deleted_at is null
+     order by c.code asc`,
+    [storeId]
+  )
+
+  return result.rows.map((row) => ({
+    id: `stocur_${row.code}`,
+    currency_code: row.code,
+    is_default: row.is_default,
+    store_id: storeId,
+    created_at: new Date(),
+    updated_at: new Date(),
+    deleted_at: null,
+    currency: {
+      code: row.code,
+      symbol: row.symbol,
+      symbol_native: row.symbol_native,
+      name: row.name,
+      decimal_digits: row.decimal_digits,
+      rounding: row.rounding,
+    },
+  }))
+}
+
+export async function loadStoreCurrenciesForAdmin(
+  schema: string,
+  storeId: string,
+  scope: StoreCurrencyScope
+): Promise<AdminStoreCurrencyRow[]> {
+  if (scope === "regions") {
+    return loadMasterCurrencyCatalogForAdmin(schema, storeId)
+  }
+
+  return loadStoreEnabledCurrenciesForAdmin(schema, storeId)
 }
 
 /** Catálogo maestro (tabla currency) para selectores al crear regiones */
