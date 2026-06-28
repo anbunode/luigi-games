@@ -1,4 +1,9 @@
 import { getPlatformLoginUrl } from "./platform-url"
+import {
+  appendStoreCurrencyScope,
+  notifyRouteChange,
+  resolveStoreCurrencyScope,
+} from "./store-currency-scope"
 
 declare global {
   interface Window {
@@ -23,12 +28,23 @@ export function installAuthBridge() {
 
   window.fetch = async (input, init) => {
     const method = (init?.method || "GET").toUpperCase()
-    const url =
+    let url =
       typeof input === "string"
         ? input
         : input instanceof Request
           ? input.url
           : String(input)
+
+    if (method === "GET" && url.includes("/admin/stores")) {
+      const scope = resolveStoreCurrencyScope(window.location.pathname)
+      url = appendStoreCurrencyScope(url, scope)
+
+      if (typeof input === "string") {
+        input = url
+      } else if (input instanceof Request) {
+        input = new Request(url, input)
+      }
+    }
 
     if (method === "DELETE" && url.includes("/auth/session")) {
       window.location.replace(logoutUrl)
@@ -65,7 +81,9 @@ export function installAuthBridge() {
       window.location.replace(loginUrl)
       return
     }
-    return originalPushState(...args)
+    const result = originalPushState(...args)
+    notifyRouteChange()
+    return result
   }) as History["pushState"]
 
   const originalReplaceState = history.replaceState.bind(history)
@@ -74,6 +92,8 @@ export function installAuthBridge() {
       window.location.replace(loginUrl)
       return
     }
-    return originalReplaceState(...args)
+    const result = originalReplaceState(...args)
+    notifyRouteChange()
+    return result
   }) as History["replaceState"]
 }

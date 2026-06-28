@@ -12,6 +12,121 @@ function sslForUrl(connectionString: string) {
     : { rejectUnauthorized: false }
 }
 
+export type StoreCurrencyScope = "catalog" | "pricing" | "regions"
+
+export type StoreCurrencyRow = {
+  id: string
+  currency_code: string
+  is_default: boolean
+  store_id: string
+  created_at: Date
+  updated_at: Date
+  deleted_at: Date | null
+}
+
+export function readStoreCurrencyScopeFromRequest(query: {
+  currency_scope?: unknown
+  skrepay_currency_scope?: unknown
+}): StoreCurrencyScope {
+  const raw = query.currency_scope ?? query.skrepay_currency_scope
+
+  if (raw === "catalog" || raw === "pricing" || raw === "regions") {
+    return raw
+  }
+
+  return "regions"
+}
+
+export async function loadStoreCurrenciesForScope(
+  schema: string,
+  storeId: string,
+  scope: StoreCurrencyScope
+): Promise<StoreCurrencyRow[]> {
+  if (scope === "pricing") {
+    return []
+  }
+
+  if (scope === "catalog") {
+    return loadCatalogStoreCurrencies(schema, storeId)
+  }
+
+  return loadRegionStoreCurrencies(schema, storeId)
+}
+
+async function loadCatalogStoreCurrencies(
+  schema: string,
+  storeId: string
+): Promise<StoreCurrencyRow[]> {
+  const schemaQ = quoteIdent(schema)
+  const result = await getPlatformPool().query<StoreCurrencyRow>(
+    `select
+       id, currency_code, is_default, store_id, created_at, updated_at, deleted_at
+     from ${schemaQ}.store_currency
+     where deleted_at is null and store_id = $1
+     order by is_default desc, currency_code asc`,
+    [storeId]
+  )
+
+  return result.rows
+}
+
+async function loadRegionStoreCurrencies(
+  schema: string,
+  storeId: string
+): Promise<StoreCurrencyRow[]> {
+  const schemaQ = quoteIdent(schema)
+  const result = await getPlatformPool().query<StoreCurrencyRow>(
+    `select
+       coalesce(sc.id, concat('stocur_', substr(md5($1 || ':' || r.currency_code), 1, 26))) as id,
+       lower(r.currency_code) as currency_code,
+       coalesce(sc.is_default, false) as is_default,
+       $1::text as store_id,
+       coalesce(sc.created_at, now()) as created_at,
+       coalesce(sc.updated_at, now()) as updated_at,
+       null::timestamptz as deleted_at
+     from (
+       select distinct lower(currency_code) as currency_code
+       from ${schemaQ}.region
+       where deleted_at is null
+     ) r
+     left join ${schemaQ}.store_currency sc
+       on sc.store_id = $1
+      and lower(sc.currency_code) = r.currency_code
+      and sc.deleted_at is null
+     order by sc.is_default desc nulls last, r.currency_code asc`,
+    [storeId]
+  )
+
+  if (result.rows.length > 0) {
+    return result.rows
+  }
+
+  const fallback = await getPlatformPool().query<StoreCurrencyRow>(
+    `select
+       id, currency_code, is_default, store_id, created_at, updated_at, deleted_at
+     from ${schemaQ}.store_currency
+     where deleted_at is null and store_id = $1 and is_default = true
+     limit 1`,
+    [storeId]
+  )
+
+  return fallback.rows
+}
+
+export async function loadStoreCurrenciesForStores(
+  schema: string,
+  storeIds: string[],
+  scope: StoreCurrencyScope
+): Promise<Map<string, StoreCurrencyRow[]>> {
+  const byStore = new Map<string, StoreCurrencyRow[]>()
+
+  for (const storeId of storeIds) {
+    byStore.set(storeId, await loadStoreCurrenciesForScope(schema, storeId, scope))
+  }
+
+  return byStore
+}
+
 export type StoreCurrencyInput = {
   currency_code: string
   is_default?: boolean

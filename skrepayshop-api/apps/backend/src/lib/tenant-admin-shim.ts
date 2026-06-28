@@ -7,6 +7,8 @@ import { getAuthContextFromJwtToken } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
 import { getPlatformPool } from "./platform-db"
 import {
+  loadStoreCurrenciesForStores,
+  readStoreCurrencyScopeFromRequest,
   syncStoreSupportedCurrencies,
   type StoreCurrencyInput,
 } from "./tenant-store-currencies"
@@ -118,42 +120,25 @@ export async function tenantAdminUsersMeShim(
   }
 }
 
-type StoreCurrencyRow = {
-  id: string
-  currency_code: string
-  is_default: boolean
-  store_id: string
-  created_at: Date
-  updated_at: Date
-  deleted_at: Date | null
-}
-
-async function loadStoreSupportedCurrencies(
+async function attachSupportedCurrencies<T extends { id: string }>(
   schema: string,
-  storeIds: string[]
-): Promise<Map<string, StoreCurrencyRow[]>> {
-  const byStore = new Map<string, StoreCurrencyRow[]>()
-
-  if (storeIds.length === 0) {
-    return byStore
-  }
-
-  const result = await getPlatformPool().query<StoreCurrencyRow>(
-    `select
-       id, currency_code, is_default, store_id, created_at, updated_at, deleted_at
-     from ${quoteSchema(schema)}.store_currency
-     where deleted_at is null and store_id = any($1::text[])
-     order by is_default desc, currency_code asc`,
-    [storeIds]
+  stores: T[],
+  req: MedusaRequest
+) {
+  const scope = readStoreCurrencyScopeFromRequest(req.query as {
+    currency_scope?: unknown
+    skrepay_currency_scope?: unknown
+  })
+  const supportedCurrenciesByStore = await loadStoreCurrenciesForStores(
+    schema,
+    stores.map((row) => row.id),
+    scope
   )
 
-  for (const row of result.rows) {
-    const existing = byStore.get(row.store_id) ?? []
-    existing.push(row)
-    byStore.set(row.store_id, existing)
-  }
-
-  return byStore
+  return stores.map((row) => ({
+    ...row,
+    supported_currencies: supportedCurrenciesByStore.get(row.id) ?? [],
+  }))
 }
 
 async function loadStoreRows(schema: string, storeId?: string) {
@@ -187,21 +172,6 @@ async function loadStoreRows(schema: string, storeId?: string) {
   }>
 }
 
-async function attachSupportedCurrencies<T extends { id: string }>(
-  schema: string,
-  stores: T[]
-) {
-  const supportedCurrenciesByStore = await loadStoreSupportedCurrencies(
-    schema,
-    stores.map((row) => row.id)
-  )
-
-  return stores.map((row) => ({
-    ...row,
-    supported_currencies: supportedCurrenciesByStore.get(row.id) ?? [],
-  }))
-}
-
 export async function tenantAdminStoreByIdGetShim(
   req: MedusaRequest,
   res: MedusaResponse,
@@ -231,7 +201,7 @@ export async function tenantAdminStoreByIdGetShim(
       )
     }
 
-    const [fullStore] = await attachSupportedCurrencies(schema, [store])
+    const [fullStore] = await attachSupportedCurrencies(schema, [store], req)
     res.json({ store: fullStore })
   } catch (error) {
     next(error)
@@ -321,7 +291,7 @@ export async function tenantAdminStoreByIdPostShim(
     }
 
     const updatedRows = await loadStoreRows(schema, id)
-    const [fullStore] = await attachSupportedCurrencies(schema, updatedRows)
+    const [fullStore] = await attachSupportedCurrencies(schema, updatedRows, req)
     res.json({ store: fullStore })
   } catch (error) {
     next(error)
@@ -341,7 +311,7 @@ export async function tenantAdminStoresShim(
     }
 
     const rows = await loadStoreRows(schema)
-    const stores = await attachSupportedCurrencies(schema, rows)
+    const stores = await attachSupportedCurrencies(schema, rows, req)
 
     res.json({
       stores,
