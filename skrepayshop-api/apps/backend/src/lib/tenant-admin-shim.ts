@@ -7,6 +7,10 @@ import { getAuthContextFromJwtToken } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
 import { getPlatformPool } from "./platform-db"
 import {
+  syncStoreSupportedCurrencies,
+  type StoreCurrencyInput,
+} from "./tenant-store-currencies"
+import {
   resolveTenantForAdminRequest,
   resolveTenantSchema,
 } from "./tenant-db-scope"
@@ -152,6 +156,178 @@ async function loadStoreSupportedCurrencies(
   return byStore
 }
 
+async function loadStoreRows(schema: string, storeId?: string) {
+  const params: string[] = []
+  let where = "deleted_at is null"
+
+  if (storeId) {
+    where += " and id = $1"
+    params.push(storeId)
+  }
+
+  const result = await getPlatformPool().query(
+    `select
+       id, name, default_sales_channel_id, default_region_id, default_location_id,
+       metadata, created_at, updated_at
+     from ${quoteSchema(schema)}.store
+     where ${where}
+     order by created_at asc`,
+    params
+  )
+
+  return result.rows as Array<{
+    id: string
+    name: string
+    default_sales_channel_id: string | null
+    default_region_id: string | null
+    default_location_id: string | null
+    metadata: Record<string, unknown> | null
+    created_at: Date
+    updated_at: Date
+  }>
+}
+
+async function attachSupportedCurrencies<T extends { id: string }>(
+  schema: string,
+  stores: T[]
+) {
+  const supportedCurrenciesByStore = await loadStoreSupportedCurrencies(
+    schema,
+    stores.map((row) => row.id)
+  )
+
+  return stores.map((row) => ({
+    ...row,
+    supported_currencies: supportedCurrenciesByStore.get(row.id) ?? [],
+  }))
+}
+
+export async function tenantAdminStoreByIdGetShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveRequestSchema(req)
+    if (!schema) {
+      next()
+      return
+    }
+
+    const id = req.params.id
+
+    if (!id) {
+      next()
+      return
+    }
+
+    const rows = await loadStoreRows(schema, id)
+    const store = rows[0]
+
+    if (!store) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `Store with id: ${id} was not found`
+      )
+    }
+
+    const [fullStore] = await attachSupportedCurrencies(schema, [store])
+    res.json({ store: fullStore })
+  } catch (error) {
+    next(error)
+  }
+}
+
+type StoreUpdateBody = {
+  name?: string
+  default_sales_channel_id?: string | null
+  default_region_id?: string | null
+  default_location_id?: string | null
+  metadata?: Record<string, unknown> | null
+  supported_currencies?: StoreCurrencyInput[]
+}
+
+export async function tenantAdminStoreByIdPostShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveRequestSchema(req)
+    if (!schema) {
+      next()
+      return
+    }
+
+    const id = req.params.id
+
+    if (!id) {
+      next()
+      return
+    }
+
+    const rows = await loadStoreRows(schema, id)
+    const store = rows[0]
+
+    if (!store) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `Store with id: ${id} was not found`
+      )
+    }
+
+    const body = req.body as StoreUpdateBody
+    const schemaQ = quoteSchema(schema)
+    const updates: string[] = []
+    const values: unknown[] = []
+
+    if (body.name !== undefined) {
+      values.push(body.name)
+      updates.push(`name = $${values.length}`)
+    }
+
+    if (body.default_sales_channel_id !== undefined) {
+      values.push(body.default_sales_channel_id)
+      updates.push(`default_sales_channel_id = $${values.length}`)
+    }
+
+    if (body.default_region_id !== undefined) {
+      values.push(body.default_region_id)
+      updates.push(`default_region_id = $${values.length}`)
+    }
+
+    if (body.default_location_id !== undefined) {
+      values.push(body.default_location_id)
+      updates.push(`default_location_id = $${values.length}`)
+    }
+
+    if (body.metadata !== undefined) {
+      values.push(JSON.stringify(body.metadata))
+      updates.push(`metadata = $${values.length}::jsonb`)
+    }
+
+    if (updates.length > 0) {
+      values.push(id)
+      await getPlatformPool().query(
+        `update ${schemaQ}.store
+         set ${updates.join(", ")}, updated_at = now()
+         where id = $${values.length} and deleted_at is null`,
+        values
+      )
+    }
+
+    if (body.supported_currencies?.length) {
+      await syncStoreSupportedCurrencies(schema, id, body.supported_currencies)
+    }
+
+    const updatedRows = await loadStoreRows(schema, id)
+    const [fullStore] = await attachSupportedCurrencies(schema, updatedRows)
+    res.json({ store: fullStore })
+  } catch (error) {
+    next(error)
+  }
+}
+
 export async function tenantAdminStoresShim(
   req: MedusaRequest,
   res: MedusaResponse,
@@ -164,25 +340,8 @@ export async function tenantAdminStoresShim(
       return
     }
 
-    const result = await getPlatformPool().query(
-      `select
-         id, name, default_sales_channel_id, default_region_id, default_location_id,
-         metadata, created_at, updated_at
-       from ${quoteSchema(schema)}.store
-       where deleted_at is null
-       order by created_at asc`
-    )
-
-    const storeIds = result.rows.map((row: { id: string }) => row.id)
-    const supportedCurrenciesByStore = await loadStoreSupportedCurrencies(
-      schema,
-      storeIds
-    )
-
-    const stores = result.rows.map((row: { id: string }) => ({
-      ...row,
-      supported_currencies: supportedCurrenciesByStore.get(row.id) ?? [],
-    }))
+    const rows = await loadStoreRows(schema)
+    const stores = await attachSupportedCurrencies(schema, rows)
 
     res.json({
       stores,

@@ -1,5 +1,5 @@
 /**
- * Asegura EUR + USD en store_currency para cada tenant (dropdown del panel).
+ * Enlaza TODAS las monedas del catálogo Medusa a la tienda del tenant.
  *
  * Uso:
  *   node scripts/repair-store-currencies.mjs
@@ -38,25 +38,24 @@ function newId(prefix) {
   return `${prefix}_${hex.slice(0, 26).toUpperCase()}`
 }
 
-const DEFAULT_CURRENCIES = [
-  { code: "eur", is_default: true },
-  { code: "usd", is_default: false },
-]
-
-async function repairStoreCurrencies(client, schema) {
+async function seedAllStoreCurrencies(client, schema, defaultCode = "eur") {
   const schemaQ = quoteIdent(schema)
   const stores = await client.query(
     `select id from ${schemaQ}.store where deleted_at is null`
   )
 
   if (stores.rows.length === 0) {
-    return { stores: 0, added: 0 }
+    return { stores: 0, added: 0, total: 0 }
   }
+
+  const currencies = await client.query(
+    `select code from ${schemaQ}.currency where deleted_at is null order by code asc`
+  )
 
   let added = 0
 
   for (const store of stores.rows) {
-    for (const { code, is_default } of DEFAULT_CURRENCIES) {
+    for (const { code } of currencies.rows) {
       const exists = await client.query(
         `select id from ${schemaQ}.store_currency
          where store_id = $1 and currency_code = $2 and deleted_at is null`,
@@ -71,13 +70,30 @@ async function repairStoreCurrencies(client, schema) {
         `insert into ${schemaQ}.store_currency
            (id, currency_code, store_id, is_default, created_at, updated_at)
          values ($1, $2, $3, $4, now(), now())`,
-        [newId("stocur"), code, store.id, is_default]
+        [newId("stocur"), code, store.id, code === defaultCode]
       )
       added++
     }
+
+    await client.query(
+      `update ${schemaQ}.store_currency
+       set is_default = (currency_code = $2), updated_at = now()
+       where store_id = $1 and deleted_at is null`,
+      [store.id, defaultCode]
+    )
   }
 
-  return { stores: stores.rows.length, added }
+  const total = await client.query(
+    `select count(*)::int as c from ${schemaQ}.store_currency
+     where deleted_at is null`
+  )
+
+  return {
+    stores: stores.rows.length,
+    added,
+    total: total.rows[0]?.c ?? 0,
+    catalog: currencies.rows.length,
+  }
 }
 
 const url = loadEnv("DATABASE_URL")
@@ -97,7 +113,7 @@ const tenants = await client.query(
 )
 
 for (const tenant of tenants.rows) {
-  const report = await repairStoreCurrencies(client, tenant.database_schema)
+  const report = await seedAllStoreCurrencies(client, tenant.database_schema)
   console.log(tenant.slug, tenant.database_schema, report)
 }
 

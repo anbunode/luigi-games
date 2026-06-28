@@ -1,5 +1,6 @@
 import { Client } from "pg"
 import { generateEntityId } from "@medusajs/framework/utils"
+import { seedAllStoreCurrencies } from "./tenant-store-currencies"
 
 function sslForUrl(connectionString: string) {
   return connectionString.includes("localhost")
@@ -59,18 +60,6 @@ export async function seedTenantCommerceData(
       [storeId, shopName, salesChannelId, regionId]
     )
 
-    for (const [currencyCode, isDefault] of [
-      ["eur", true],
-      ["usd", false],
-    ] as const) {
-      await client.query(
-        `insert into ${schemaQ}.store_currency (id, currency_code, store_id, is_default, created_at, updated_at)
-         values ($1, $2, $3, $4, now(), now())
-         on conflict do nothing`,
-        [generateEntityId(undefined, "stocur"), currencyCode, storeId, isDefault]
-      )
-    }
-
     await client.query(
       `insert into ${schemaQ}.region_country (iso_2, iso_3, num_code, name, display_name, region_id, created_at, updated_at)
        values ('es', 'esp', 724, 'Spain', 'Spain', $1, now(), now())
@@ -79,6 +68,8 @@ export async function seedTenantCommerceData(
     )
 
     await client.query("commit")
+
+    await seedAllStoreCurrencies(connectionString, schema, storeId, "eur")
 
     return { store_id: storeId, region_id: regionId }
   } catch (error) {
