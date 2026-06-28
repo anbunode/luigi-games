@@ -11,7 +11,7 @@ import {
 
 /**
  * Al entrar en productos aplica moneda base + regiones en caché.
- * Al salir a tienda/regiones recarga el catálogo completo.
+ * Al salir de productos recarga las monedas habilitadas de la tienda.
  */
 const StoreCurrencyScopeSync = () => {
   const queryClient = useQueryClient()

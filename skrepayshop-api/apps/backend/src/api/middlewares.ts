@@ -6,6 +6,7 @@ import {
 import { tenantRegionTaxSyncMiddleware } from "../lib/tenant-region-tax-middleware"
 import { tenantRegionDeleteMiddleware } from "../lib/tenant-region-delete-middleware"
 import {
+  tenantAdminCurrenciesShim,
   tenantAdminSalesChannelByIdGetShim,
   tenantAdminSalesChannelsShim,
   tenantAdminStoreByIdGetShim,
@@ -24,6 +25,11 @@ export default defineMiddlewares({
       method: "GET",
       matcher: "/admin/users/me",
       middlewares: [tenantAdminUsersMeShim],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/currencies",
+      middlewares: [tenantAdminCurrenciesShim],
     },
     {
       method: "GET",

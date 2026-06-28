@@ -1,7 +1,7 @@
 /**
  * Modos de moneda del panel — fuente única de verdad para rutas.
  *
- * - catalog: tienda, regiones, impuestos (catálogo completo, estable)
+ * - catalog: tienda (monedas habilitadas en la tienda)
  * - pricing: productos (moneda base + monedas de regiones)
  */
 export type StoreCurrencyMode = "catalog" | "pricing"

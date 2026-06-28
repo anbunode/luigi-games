@@ -7,7 +7,8 @@ import { getAuthContextFromJwtToken } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
 import { getPlatformPool } from "./platform-db"
 import {
-  loadStoreCurrenciesForStores,
+  loadStoreEnabledCurrencies,
+  loadMasterCurrencyCatalog,
   syncStoreSupportedCurrencies,
   type StoreCurrencyInput,
 } from "./tenant-store-currencies"
@@ -123,15 +124,18 @@ async function attachSupportedCurrencies<T extends { id: string }>(
   schema: string,
   stores: T[]
 ) {
-  const supportedCurrenciesByStore = await loadStoreCurrenciesForStores(
-    schema,
-    stores.map((row) => row.id),
-    "catalog"
-  )
+  const byStore = new Map<string, Awaited<ReturnType<typeof loadStoreEnabledCurrencies>>>()
+
+  for (const store of stores) {
+    byStore.set(
+      store.id,
+      await loadStoreEnabledCurrencies(schema, store.id)
+    )
+  }
 
   return stores.map((row) => ({
     ...row,
-    supported_currencies: supportedCurrenciesByStore.get(row.id) ?? [],
+    supported_currencies: byStore.get(row.id) ?? [],
   }))
 }
 
@@ -280,8 +284,12 @@ export async function tenantAdminStoreByIdPostShim(
       )
     }
 
-    if (body.supported_currencies?.length) {
-      await syncStoreSupportedCurrencies(schema, id, body.supported_currencies)
+    if (body.supported_currencies !== undefined) {
+      await syncStoreSupportedCurrencies(
+        schema,
+        id,
+        body.supported_currencies ?? []
+      )
     }
 
     const updatedRows = await loadStoreRows(schema, id)
@@ -386,6 +394,31 @@ export async function tenantAdminSalesChannelByIdGetShim(
     }
 
     res.json({ sales_channel })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function tenantAdminCurrenciesShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveRequestSchema(req)
+    if (!schema) {
+      next()
+      return
+    }
+
+    const rows = await loadMasterCurrencyCatalog(schema)
+
+    res.json({
+      currencies: rows,
+      count: rows.length,
+      offset: 0,
+      limit: rows.length,
+    })
   } catch (error) {
     next(error)
   }

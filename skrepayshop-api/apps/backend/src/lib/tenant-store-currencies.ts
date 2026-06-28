@@ -58,7 +58,7 @@ export async function loadStoreCurrenciesForScope(
   scope: StoreCurrencyScope
 ): Promise<StoreCurrencyRow[]> {
   if (scope === "catalog") {
-    return loadCatalogStoreCurrencies(schema, storeId)
+    return loadStoreEnabledCurrencies(schema, storeId)
   }
 
   if (scope === "pricing") {
@@ -68,7 +68,7 @@ export async function loadStoreCurrenciesForScope(
   return loadRegionStoreCurrencies(schema, storeId)
 }
 
-async function loadCatalogStoreCurrencies(
+async function loadStoreEnabledCurrencies(
   schema: string,
   storeId: string
 ): Promise<StoreCurrencyRow[]> {
@@ -80,6 +80,35 @@ async function loadCatalogStoreCurrencies(
      where deleted_at is null and store_id = $1
      order by is_default desc, currency_code asc`,
     [storeId]
+  )
+
+  return result.rows
+}
+
+/** Catálogo maestro (tabla currency) para selectores al crear regiones */
+export async function loadMasterCurrencyCatalog(
+  schema: string
+): Promise<
+  Array<{
+    code: string
+    symbol: string
+    symbol_native: string
+    name: string
+    decimal_digits: number
+  }>
+> {
+  const schemaQ = quoteIdent(schema)
+  const result = await getPlatformPool().query<{
+    code: string
+    symbol: string
+    symbol_native: string
+    name: string
+    decimal_digits: number
+  }>(
+    `select code, symbol, symbol_native, name, decimal_digits
+     from ${schemaQ}.currency
+     where deleted_at is null
+     order by code asc`
   )
 
   return result.rows
@@ -223,6 +252,7 @@ export async function loadStoreCurrenciesForStores(
 export type StoreCurrencyInput = {
   currency_code: string
   is_default?: boolean
+  is_tax_inclusive?: boolean
 }
 
 export async function setStoreDefaultCurrency(
@@ -250,8 +280,60 @@ export async function setStoreDefaultCurrency(
 }
 
 /**
- * Enlaza todas las monedas del catálogo Medusa (tabla currency) a la tienda.
- * Así el panel nativo muestra el listado completo en regiones y en editar tienda.
+ * Solo la moneda base al provisionar una tienda nueva.
+ * El catálogo completo vive en la tabla `currency`; el usuario activa monedas en Ajustes → Tienda.
+ */
+export async function seedDefaultStoreCurrency(
+  connectionString: string,
+  schema: string,
+  storeId: string,
+  defaultCurrencyCode = "usd"
+): Promise<void> {
+  const schemaQ = quoteIdent(schema)
+  const client = new Client({
+    connectionString: connectionString.split("?")[0],
+    ssl: sslForUrl(connectionString),
+  })
+
+  await client.connect()
+
+  try {
+    const code = defaultCurrencyCode.toLowerCase()
+    const existing = await client.query<{ id: string }>(
+      `select id from ${schemaQ}.store_currency
+       where store_id = $1 and currency_code = $2 and deleted_at is null`,
+      [storeId, code]
+    )
+
+    if (!existing.rows[0]?.id) {
+      await client.query(
+        `insert into ${schemaQ}.store_currency
+           (id, currency_code, store_id, is_default, created_at, updated_at)
+         values ($1, $2, $3, true, now(), now())`,
+        [generateEntityId(undefined, "stocur"), code, storeId]
+      )
+    } else {
+      await client.query(
+        `update ${schemaQ}.store_currency
+         set is_default = true, deleted_at = null, updated_at = now()
+         where id = $1`,
+        [existing.rows[0].id]
+      )
+    }
+
+    await client.query(
+      `update ${schemaQ}.store_currency
+       set is_default = false, updated_at = now()
+       where store_id = $1 and deleted_at is null and currency_code <> $2`,
+      [storeId, code]
+    )
+  } finally {
+    await client.end()
+  }
+}
+
+/**
+ * @deprecated No enlazar todas las monedas a la tienda; usar seedDefaultStoreCurrency.
  */
 export async function seedAllStoreCurrencies(
   connectionString: string,
@@ -320,25 +402,62 @@ export async function seedAllStoreCurrencies(
   }
 }
 
+export async function syncStoreCurrencyPricePreferences(
+  schema: string,
+  currencies: StoreCurrencyInput[]
+): Promise<void> {
+  const schemaQ = quoteIdent(schema)
+  const pool = getPlatformPool()
+  const codes = currencies.map((entry) => entry.currency_code.toLowerCase())
+
+  await pool.query(
+    `update ${schemaQ}.price_preference
+     set deleted_at = now(), updated_at = now()
+     where deleted_at is null
+       and attribute = 'currency_code'
+       and not (lower(value) = any($1::text[]))`,
+    [codes]
+  )
+
+  for (const entry of currencies) {
+    if (entry.is_tax_inclusive === undefined) {
+      continue
+    }
+
+    const code = entry.currency_code.toLowerCase()
+    const existing = await pool.query<{ id: string }>(
+      `select id from ${schemaQ}.price_preference
+       where attribute = 'currency_code' and lower(value) = $1
+       order by deleted_at nulls first
+       limit 1`,
+      [code]
+    )
+
+    if (existing.rows[0]?.id) {
+      await pool.query(
+        `update ${schemaQ}.price_preference
+         set is_tax_inclusive = $2, deleted_at = null, updated_at = now()
+         where id = $1`,
+        [existing.rows[0].id, entry.is_tax_inclusive]
+      )
+      continue
+    }
+
+    await pool.query(
+      `insert into ${schemaQ}.price_preference
+         (id, attribute, value, is_tax_inclusive, created_at, updated_at)
+       values ($1, 'currency_code', $2, $3, now(), now())`,
+      [generateEntityId(undefined, "ppref"), code, entry.is_tax_inclusive]
+    )
+  }
+}
+
 export async function syncStoreSupportedCurrencies(
   schema: string,
   storeId: string,
   currencies: StoreCurrencyInput[]
 ): Promise<void> {
   if (!currencies.length) {
-    return
-  }
-
-  const defaultEntries = currencies.filter((entry) => entry.is_default)
-  const isDefaultOnlyChange =
-    defaultEntries.length === 1 && currencies.length <= 3
-
-  if (isDefaultOnlyChange) {
-    await setStoreDefaultCurrency(
-      schema,
-      storeId,
-      defaultEntries[0].currency_code
-    )
     return
   }
 
@@ -352,6 +471,14 @@ export async function syncStoreSupportedCurrencies(
   await pool.query("begin")
 
   try {
+    await pool.query(
+      `update ${schemaQ}.store_currency
+       set deleted_at = now(), updated_at = now()
+       where store_id = $1 and deleted_at is null
+         and not (lower(currency_code) = any($2::text[]))`,
+      [storeId, codes]
+    )
+
     for (const entry of currencies) {
       const code = entry.currency_code.toLowerCase()
       const isDefault = code === defaultCode
@@ -393,6 +520,8 @@ export async function syncStoreSupportedCurrencies(
        where store_id = $1 and deleted_at is null and currency_code = $2`,
       [storeId, defaultCode]
     )
+
+    await syncStoreCurrencyPricePreferences(schema, currencies)
 
     await pool.query("commit")
   } catch (error) {

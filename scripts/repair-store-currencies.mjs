@@ -1,5 +1,6 @@
 /**
- * Enlaza TODAS las monedas del catálogo Medusa a la tienda del tenant.
+ * Deja solo las monedas habilitadas por el usuario en store_currency.
+ * Por defecto conserva la moneda base (is_default) o USD.
  *
  * Uso:
  *   node scripts/repair-store-currencies.mjs
@@ -38,61 +39,80 @@ function newId(prefix) {
   return `${prefix}_${hex.slice(0, 26).toUpperCase()}`
 }
 
-async function seedAllStoreCurrencies(client, schema, defaultCode = "eur") {
+async function resetStoreEnabledCurrencies(client, schema, fallbackDefault = "usd") {
   const schemaQ = quoteIdent(schema)
   const stores = await client.query(
     `select id from ${schemaQ}.store where deleted_at is null`
   )
 
   if (stores.rows.length === 0) {
-    return { stores: 0, added: 0, total: 0 }
+    return { stores: 0, enabled: 0, removed: 0 }
   }
 
-  const currencies = await client.query(
-    `select code from ${schemaQ}.currency where deleted_at is null order by code asc`
-  )
-
-  let added = 0
+  let removed = 0
 
   for (const store of stores.rows) {
-    for (const { code } of currencies.rows) {
-      const exists = await client.query(
-        `select id from ${schemaQ}.store_currency
-         where store_id = $1 and currency_code = $2 and deleted_at is null`,
-        [store.id, code]
+    const defaultRow = await client.query(
+      `select currency_code from ${schemaQ}.store_currency
+       where store_id = $1 and deleted_at is null and is_default = true
+       limit 1`,
+      [store.id]
+    )
+
+    const defaultCode = (
+      defaultRow.rows[0]?.currency_code ?? fallbackDefault
+    ).toLowerCase()
+
+    const removedResult = await client.query(
+      `update ${schemaQ}.store_currency
+       set deleted_at = now(), updated_at = now()
+       where store_id = $1 and deleted_at is null and lower(currency_code) <> $2
+       returning id`,
+      [store.id, defaultCode]
+    )
+    removed += removedResult.rowCount ?? 0
+
+    const existing = await client.query(
+      `select id from ${schemaQ}.store_currency
+       where store_id = $1 and lower(currency_code) = $2
+       order by deleted_at nulls first
+       limit 1`,
+      [store.id, defaultCode]
+    )
+
+    if (existing.rows[0]?.id) {
+      await client.query(
+        `update ${schemaQ}.store_currency
+         set is_default = true, deleted_at = null, updated_at = now()
+         where id = $1`,
+        [existing.rows[0].id]
       )
-
-      if (exists.rows[0]?.id) {
-        continue
-      }
-
+    } else {
       await client.query(
         `insert into ${schemaQ}.store_currency
            (id, currency_code, store_id, is_default, created_at, updated_at)
-         values ($1, $2, $3, $4, now(), now())`,
-        [newId("stocur"), code, store.id, code === defaultCode]
+         values ($1, $2, $3, true, now(), now())`,
+        [newId("stocur"), defaultCode, store.id]
       )
-      added++
     }
 
     await client.query(
       `update ${schemaQ}.store_currency
-       set is_default = (currency_code = $2), updated_at = now()
-       where store_id = $1 and deleted_at is null`,
+       set is_default = false, updated_at = now()
+       where store_id = $1 and deleted_at is null and lower(currency_code) <> $2`,
       [store.id, defaultCode]
     )
   }
 
-  const total = await client.query(
+  const enabled = await client.query(
     `select count(*)::int as c from ${schemaQ}.store_currency
      where deleted_at is null`
   )
 
   return {
     stores: stores.rows.length,
-    added,
-    total: total.rows[0]?.c ?? 0,
-    catalog: currencies.rows.length,
+    enabled: enabled.rows[0]?.c ?? 0,
+    removed,
   }
 }
 
@@ -113,7 +133,10 @@ const tenants = await client.query(
 )
 
 for (const tenant of tenants.rows) {
-  const report = await seedAllStoreCurrencies(client, tenant.database_schema)
+  const report = await resetStoreEnabledCurrencies(
+    client,
+    tenant.database_schema
+  )
   console.log(tenant.slug, tenant.database_schema, report)
 }
 
