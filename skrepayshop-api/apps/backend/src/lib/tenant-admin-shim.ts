@@ -7,12 +7,10 @@ import { getAuthContextFromJwtToken } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
 import { getPlatformPool } from "./platform-db"
 import {
-  loadStoreCurrenciesForAdmin,
+  loadStoreEnabledCurrenciesForAdmin,
   loadMasterCurrencyCatalog,
-  readStoreCurrencyScopeFromMedusaRequest,
   syncStoreSupportedCurrencies,
   type StoreCurrencyInput,
-  type StoreCurrencyScope,
 } from "./tenant-store-currencies"
 import {
   resolveTenantForAdminRequest,
@@ -124,21 +122,17 @@ export async function tenantAdminUsersMeShim(
 
 async function attachSupportedCurrencies<T extends { id: string }>(
   schema: string,
-  stores: T[],
-  req: MedusaRequest,
-  scopeOverride?: StoreCurrencyScope
+  stores: T[]
 ) {
-  const scope =
-    scopeOverride ?? readStoreCurrencyScopeFromMedusaRequest(req)
   const byStore = new Map<
     string,
-    Awaited<ReturnType<typeof loadStoreCurrenciesForAdmin>>
+    Awaited<ReturnType<typeof loadStoreEnabledCurrenciesForAdmin>>
   >()
 
   for (const store of stores) {
     byStore.set(
       store.id,
-      await loadStoreCurrenciesForAdmin(schema, store.id, scope)
+      await loadStoreEnabledCurrenciesForAdmin(schema, store.id)
     )
   }
 
@@ -208,7 +202,7 @@ export async function tenantAdminStoreByIdGetShim(
       )
     }
 
-    const [fullStore] = await attachSupportedCurrencies(schema, [store], req)
+    const [fullStore] = await attachSupportedCurrencies(schema, [store])
     res.json({ store: fullStore })
   } catch (error) {
     next(error)
@@ -302,12 +296,7 @@ export async function tenantAdminStoreByIdPostShim(
     }
 
     const updatedRows = await loadStoreRows(schema, id)
-    const [fullStore] = await attachSupportedCurrencies(
-      schema,
-      updatedRows,
-      req,
-      "catalog"
-    )
+    const [fullStore] = await attachSupportedCurrencies(schema, updatedRows)
     res.json({ store: fullStore })
   } catch (error) {
     next(error)
@@ -327,7 +316,7 @@ export async function tenantAdminStoresShim(
     }
 
     const rows = await loadStoreRows(schema)
-    const stores = await attachSupportedCurrencies(schema, rows, req)
+    const stores = await attachSupportedCurrencies(schema, rows)
 
     res.json({
       stores,

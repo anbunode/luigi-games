@@ -1,23 +1,21 @@
-export type StoreCurrencyScope = "catalog" | "regions"
-
-export const STORE_CURRENCY_SCOPE_HEADER = "x-skrepay-currency-scope"
 export const SKREPAY_ROUTE_CHANGE_EVENT = "skrepay:route-change"
 
 export function normalizeAdminPathname(pathname: string): string {
   return pathname.replace(/^\/app(?=\/|$)/, "") || "/"
 }
 
-export function resolveStoreCurrencyScope(pathname: string): StoreCurrencyScope {
+/** Crear o editar región — necesita catálogo completo vía overlay aislado */
+export function needsRegionCurrencyOverlay(pathname: string): boolean {
   const path = normalizeAdminPathname(pathname)
 
-  if (
-    /\/settings\/regions(\/create|\/[^/]+)?\/?$/.test(path) ||
-    /\/settings\/regions\/?$/.test(path)
-  ) {
-    return "regions"
-  }
+  return (
+    /\/settings\/regions\/create\/?$/.test(path) ||
+    /\/settings\/regions\/[^/]+\/?$/.test(path)
+  )
+}
 
-  return "catalog"
+export function isStoreSettingsPage(pathname: string): boolean {
+  return /\/settings\/store\/?$/.test(normalizeAdminPathname(pathname))
 }
 
 export function notifyRouteChange() {

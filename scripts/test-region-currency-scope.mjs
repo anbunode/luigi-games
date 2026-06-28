@@ -24,16 +24,14 @@ const loginRes = await fetch(`${base}/skrepay/auth/login`, {
 const { token } = await loginRes.json()
 const bridgeRes = await fetch(`${base}/skrepay/session-bridge?token=${encodeURIComponent(token)}`, { redirect: "manual" })
 const cookieHeader = (bridgeRes.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ")
+const headers = { Cookie: cookieHeader }
 
-async function count(scope) {
-  const headers = {
-    Cookie: cookieHeader,
-    "x-skrepay-currency-scope": scope,
-  }
-  const body = await (await fetch(`${base}/admin/stores`, { headers })).json()
-  const codes = body.stores?.[0]?.supported_currencies?.map((c) => c.currency_code) ?? []
-  console.log(`scope=${scope} count=${codes.length} sample=${codes.slice(0, 5).join(",")}`)
-}
+const store = await (await fetch(`${base}/admin/stores`, { headers })).json()
+const storeCount = store.stores?.[0]?.supported_currencies?.length ?? 0
 
-await count("catalog")
-await count("regions")
+const region = await (await fetch(`${base}/admin/skrepay/region-currencies`, { headers })).json()
+const regionCount = region.supported_currencies?.length ?? 0
+
+console.log("store (catalog) currencies:", storeCount)
+console.log("region-currencies endpoint:", regionCount)
+console.log(storeCount < regionCount ? "isolated OK" : "check isolation")
