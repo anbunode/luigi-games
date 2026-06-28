@@ -1,4 +1,5 @@
 import { getPlatformLoginUrl } from "./platform-url"
+import { notifyRouteChange } from "./region-routes"
 
 declare global {
   interface Window {
@@ -65,7 +66,9 @@ export function installAuthBridge() {
       window.location.replace(loginUrl)
       return
     }
-    return originalPushState(...args)
+    const result = originalPushState(...args)
+    notifyRouteChange()
+    return result
   }) as History["pushState"]
 
   const originalReplaceState = history.replaceState.bind(history)
@@ -74,6 +77,8 @@ export function installAuthBridge() {
       window.location.replace(loginUrl)
       return
     }
-    return originalReplaceState(...args)
+    const result = originalReplaceState(...args)
+    notifyRouteChange()
+    return result
   }) as History["replaceState"]
 }
