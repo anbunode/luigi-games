@@ -2,6 +2,7 @@ import { spawn } from "child_process"
 import { Client } from "pg"
 import { getPlatformPool } from "./platform-db"
 import { cloneMedusaSchemaFromPublic } from "./clone-medusa-schema"
+import { seedTenantReferenceData } from "./tenant-reference-seed"
 import {
   bootstrapTenantAdminInSchema,
   type TenantAdminInput,
@@ -189,6 +190,7 @@ export async function provisionTenantDatabase(slug: string): Promise<{
   const schema = tenantSchemaName(slug)
   await createSchema(baseUrl, schema)
   await cloneMedusaSchemaFromPublic(baseUrl.split("?")[0], schema)
+  await seedTenantReferenceData(baseUrl, schema)
 
   const databaseUrl = withSearchPath(baseUrl, schema)
 

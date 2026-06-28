@@ -68,6 +68,14 @@ npx supabase db push
 
 Los schemas de tenant (`t_*`) **no** se crean por migraciones SQL del repo: se crean **automáticamente** en signup vía API (`provisionTenantDatabase`).
 
+Tras clonar la estructura, se copian **monedas y proveedores de pago** desde `public` (requerido para crear regiones en el panel).
+
+Reparar tenants existentes sin esos datos:
+
+```bash
+node scripts/repair-tenant-reference-data.mjs
+```
+
 ## Render
 
 Una sola variable de conexión:
