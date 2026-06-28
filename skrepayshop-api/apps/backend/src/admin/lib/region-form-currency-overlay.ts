@@ -29,9 +29,17 @@ function isStoreQueryKey(queryKey: QueryKey): boolean {
 
   const [root, resource] = queryKey
 
-  return (
-    root === "admin" && (resource === "store" || resource === "stores")
-  )
+  // Medusa Admin dashboard (useStore → storeQueryKeys.details() === ["store", "detail"])
+  if (root === "store" && (resource === "detail" || resource === "list")) {
+    return true
+  }
+
+  // Legacy / SDK-style keys
+  if (root === "admin" && (resource === "store" || resource === "stores")) {
+    return true
+  }
+
+  return false
 }
 
 function snapshotStoreCache(queryClient: QueryClient): StoreCacheSnapshot {
