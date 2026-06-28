@@ -14,7 +14,7 @@ import {
   resolveStoreTenant,
 } from "./tenant-context"
 import { tenantSchemaName, tenantHasDedicatedDatabase } from "./tenant-provisioner"
-import { runWithTenantSchema } from "./tenant-schema-context"
+import { runWithTenantSchema, enterTenantSchema } from "./tenant-schema-context"
 import { ensureTenantPoolPatches } from "./tenant-pg-pool-patch"
 
 type ScopedRequest = MedusaRequest & {
@@ -181,23 +181,22 @@ async function applyTenantScope(
   ensureTenantPoolPatches(req.scope)
   await setTenantSearchPath(req.scope, schema)
 
-  runWithTenantSchema(schema, () => {
-    ;(req as ScopedRequest).skrepayTenantSchema = schema
+  enterTenantSchema(schema)
+  ;(req as ScopedRequest).skrepayTenantSchema = schema
 
-    let cleanedUp = false
-    const cleanup = () => {
-      if (cleanedUp) {
-        return
-      }
-
-      cleanedUp = true
-      resetSearchPath(req.scope).catch(() => undefined)
+  let cleanedUp = false
+  const cleanup = () => {
+    if (cleanedUp) {
+      return
     }
 
-    res.on("finish", cleanup)
-    res.on("close", cleanup)
-    next()
-  })
+    cleanedUp = true
+    resetSearchPath(req.scope).catch(() => undefined)
+  }
+
+  res.on("finish", cleanup)
+  res.on("close", cleanup)
+  next()
 }
 
 export async function tenantAdminDatabaseScopeMiddleware(
