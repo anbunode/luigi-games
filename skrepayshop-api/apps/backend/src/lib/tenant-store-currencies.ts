@@ -24,17 +24,34 @@ export type StoreCurrencyRow = {
   deleted_at: Date | null
 }
 
-export function readStoreCurrencyScopeFromRequest(query: {
+export const STORE_CURRENCY_SCOPE_HEADER = "x-skrepay-currency-scope"
+
+export function readStoreCurrencyScopeFromRequest(input: {
   currency_scope?: unknown
   skrepay_currency_scope?: unknown
+  header_scope?: unknown
 }): StoreCurrencyScope {
-  const raw = query.currency_scope ?? query.skrepay_currency_scope
+  const raw =
+    input.header_scope ?? input.currency_scope ?? input.skrepay_currency_scope
 
   if (raw === "catalog" || raw === "pricing" || raw === "regions") {
     return raw
   }
 
   return "regions"
+}
+
+export function readStoreCurrencyScopeFromMedusaRequest(
+  req: { headers?: Record<string, unknown> }
+): StoreCurrencyScope {
+  const headers = req.headers ?? {}
+  const raw =
+    headers[STORE_CURRENCY_SCOPE_HEADER] ??
+    headers[STORE_CURRENCY_SCOPE_HEADER.toLowerCase()]
+
+  return readStoreCurrencyScopeFromRequest({
+    header_scope: Array.isArray(raw) ? raw[0] : raw,
+  })
 }
 
 export async function loadStoreCurrenciesForScope(

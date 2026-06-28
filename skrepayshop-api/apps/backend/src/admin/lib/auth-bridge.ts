@@ -1,8 +1,9 @@
 import { getPlatformLoginUrl } from "./platform-url"
 import {
-  appendStoreCurrencyScope,
   notifyRouteChange,
   resolveStoreCurrencyScope,
+  STORE_CURRENCY_SCOPE_HEADER,
+  withStoreCurrencyScopeHeader,
 } from "./store-currency-scope"
 
 declare global {
@@ -28,21 +29,27 @@ export function installAuthBridge() {
 
   window.fetch = async (input, init) => {
     const method = (init?.method || "GET").toUpperCase()
-    let url =
+    const url =
       typeof input === "string"
         ? input
         : input instanceof Request
           ? input.url
           : String(input)
 
+    let nextInput: RequestInfo | URL = input
+    let nextInit = init
+
     if (method === "GET" && url.includes("/admin/stores")) {
       const scope = resolveStoreCurrencyScope(window.location.pathname)
-      url = appendStoreCurrencyScope(url, scope)
+      const scopedInit = withStoreCurrencyScopeHeader(init, scope)
 
-      if (typeof input === "string") {
-        input = url
-      } else if (input instanceof Request) {
-        input = new Request(url, input)
+      if (input instanceof Request) {
+        const headers = new Headers(input.headers)
+        headers.set(STORE_CURRENCY_SCOPE_HEADER, scope)
+        nextInput = new Request(input, { headers })
+        nextInit = undefined
+      } else {
+        nextInit = scopedInit
       }
     }
 
@@ -54,7 +61,7 @@ export function installAuthBridge() {
       })
     }
 
-    const response = await originalFetch(input, init)
+    const response = await originalFetch(nextInput, nextInit)
 
     if (
       method === "DELETE" &&

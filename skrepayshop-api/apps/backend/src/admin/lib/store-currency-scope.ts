@@ -1,5 +1,7 @@
 export type StoreCurrencyScope = "catalog" | "pricing" | "regions"
 
+export const STORE_CURRENCY_SCOPE_HEADER = "x-skrepay-currency-scope"
+
 export function resolveStoreCurrencyScope(pathname: string): StoreCurrencyScope {
   if (/\/products(\/create|\/[^/]+\/prices)/.test(pathname)) {
     return "pricing"
@@ -16,19 +18,17 @@ export function resolveStoreCurrencyScope(pathname: string): StoreCurrencyScope 
   return "regions"
 }
 
-export function appendStoreCurrencyScope(url: string, scope: StoreCurrencyScope) {
-  const parsed = new URL(url, window.location.origin)
-
-  if (!parsed.pathname.includes("/admin/stores")) {
-    return url
-  }
-
-  parsed.searchParams.set("currency_scope", scope)
-  return `${parsed.pathname}${parsed.search}${parsed.hash}`
-}
-
 export const SKREPAY_ROUTE_CHANGE_EVENT = "skrepay:route-change"
 
 export function notifyRouteChange() {
   window.dispatchEvent(new Event(SKREPAY_ROUTE_CHANGE_EVENT))
+}
+
+export function withStoreCurrencyScopeHeader(
+  init: RequestInit | undefined,
+  scope: StoreCurrencyScope
+): RequestInit {
+  const headers = new Headers(init?.headers ?? undefined)
+  headers.set(STORE_CURRENCY_SCOPE_HEADER, scope)
+  return { ...init, headers }
 }

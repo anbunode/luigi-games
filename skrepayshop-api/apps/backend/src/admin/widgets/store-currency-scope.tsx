@@ -1,25 +1,22 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { useQueryClient } from "@tanstack/react-query"
 import { useLayoutEffect } from "react"
-import { useLocation } from "react-router-dom"
 import { SKREPAY_ROUTE_CHANGE_EVENT } from "../lib/store-currency-scope"
 
 const StoreCurrencyScopeSync = () => {
   const queryClient = useQueryClient()
-  const location = useLocation()
 
   useLayoutEffect(() => {
     const invalidateStore = () => {
       queryClient.invalidateQueries({ queryKey: ["store"] })
     }
 
-    invalidateStore()
     window.addEventListener(SKREPAY_ROUTE_CHANGE_EVENT, invalidateStore)
 
     return () => {
       window.removeEventListener(SKREPAY_ROUTE_CHANGE_EVENT, invalidateStore)
     }
-  }, [location.pathname, queryClient])
+  }, [queryClient])
 
   return null
 }

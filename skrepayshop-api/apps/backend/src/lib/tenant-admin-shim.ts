@@ -8,7 +8,7 @@ import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/util
 import { getPlatformPool } from "./platform-db"
 import {
   loadStoreCurrenciesForStores,
-  readStoreCurrencyScopeFromRequest,
+  readStoreCurrencyScopeFromMedusaRequest,
   syncStoreSupportedCurrencies,
   type StoreCurrencyInput,
 } from "./tenant-store-currencies"
@@ -125,10 +125,7 @@ async function attachSupportedCurrencies<T extends { id: string }>(
   stores: T[],
   req: MedusaRequest
 ) {
-  const scope = readStoreCurrencyScopeFromRequest(req.query as {
-    currency_scope?: unknown
-    skrepay_currency_scope?: unknown
-  })
+  const scope = readStoreCurrencyScopeFromMedusaRequest(req)
   const supportedCurrenciesByStore = await loadStoreCurrenciesForStores(
     schema,
     stores.map((row) => row.id),

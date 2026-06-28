@@ -26,18 +26,18 @@ const loginRes = await fetch(`${base}/skrepay/auth/login`, {
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ email, password }),
 })
+console.log("login", loginRes.status)
 const { token } = await loginRes.json()
 const headers = { Authorization: `Bearer ${token}` }
 
-for (const scope of ["pricing", "regions", "catalog"]) {
-  const res = await fetch(`${base}/admin/stores`, {
-    headers: {
-      ...headers,
-      "x-skrepay-currency-scope": scope,
-    },
-  })
-  const body = await res.json()
-  const codes =
-    body.stores?.[0]?.supported_currencies?.map((c) => c.currency_code) ?? []
-  console.log(scope, res.status, codes.length, codes.slice(0, 6).join(", "))
+for (const path of [
+  "/admin/stores",
+  "/admin/stores?currency_scope=catalog",
+  "/admin/orders?limit=3",
+  "/admin/products?limit=3",
+  "/admin/draft-orders?limit=3",
+]) {
+  const res = await fetch(`${base}${path}`, { headers })
+  const text = await res.text()
+  console.log(`\nGET ${path}`, res.status, text.slice(0, 500))
 }
