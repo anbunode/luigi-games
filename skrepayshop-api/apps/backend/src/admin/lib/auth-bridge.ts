@@ -8,15 +8,6 @@ import {
 declare global {
   interface Window {
     __skrepayAuthBridgeInstalled?: boolean
-    __skrepayPricingCurrenciesCache?: Array<{
-      id: string
-      currency_code: string
-      is_default: boolean
-      store_id: string
-      created_at: string
-      updated_at: string
-      deleted_at: string | null
-    }>
   }
 }
 
@@ -45,30 +36,29 @@ function readAuthHeaders(init?: RequestInit, input?: RequestInfo | URL): Headers
 async function loadPricingCurrencies(
   originalFetch: typeof fetch,
   authHeaders: Headers
-): Promise<NonNullable<typeof window.__skrepayPricingCurrenciesCache>> {
-  if (window.__skrepayPricingCurrenciesCache) {
-    return window.__skrepayPricingCurrenciesCache
-  }
-
+) {
   const headers = new Headers(authHeaders)
-  const response = await originalFetch("/admin/skrepay/pricing-currencies", {
-    method: "GET",
-    credentials: "include",
-    headers,
-  })
+  const response = await originalFetch(
+    `/admin/skrepay/pricing-currencies?_ts=${Date.now()}`,
+    {
+      method: "GET",
+      credentials: "include",
+      headers,
+      cache: "no-store",
+    }
+  )
 
   if (!response.ok) {
     return []
   }
 
   const body = await response.json()
-  window.__skrepayPricingCurrenciesCache = body.supported_currencies ?? []
-  return window.__skrepayPricingCurrenciesCache ?? []
+  return body.supported_currencies ?? []
 }
 
 function patchStorePayload(
   body: Record<string, unknown>,
-  pricingCurrencies: NonNullable<typeof window.__skrepayPricingCurrenciesCache>
+  pricingCurrencies: unknown[]
 ) {
   if (Array.isArray(body.stores)) {
     return {
@@ -178,7 +168,6 @@ export function installAuthBridge() {
       return
     }
     const result = originalPushState(...args)
-    window.__skrepayPricingCurrenciesCache = undefined
     notifyRouteChange()
     return result
   }) as History["pushState"]
@@ -190,7 +179,6 @@ export function installAuthBridge() {
       return
     }
     const result = originalReplaceState(...args)
-    window.__skrepayPricingCurrenciesCache = undefined
     notifyRouteChange()
     return result
   }) as History["replaceState"]

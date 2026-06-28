@@ -4,6 +4,7 @@ import {
   tenantStoreDatabaseScopeMiddleware,
 } from "../lib/tenant-db-scope"
 import { tenantRegionTaxSyncMiddleware } from "../lib/tenant-region-tax-middleware"
+import { tenantRegionDeleteMiddleware } from "../lib/tenant-region-delete-middleware"
 import {
   tenantAdminSalesChannelByIdGetShim,
   tenantAdminSalesChannelsShim,
@@ -58,6 +59,11 @@ export default defineMiddlewares({
       method: "POST",
       matcher: "/admin/regions/:id",
       middlewares: [tenantRegionTaxSyncMiddleware],
+    },
+    {
+      method: "DELETE",
+      matcher: "/admin/regions/:id",
+      middlewares: [tenantRegionDeleteMiddleware],
     },
     {
       matcher: /^\/store(\/|$)/,

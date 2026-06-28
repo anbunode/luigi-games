@@ -87,13 +87,22 @@ async function loadCatalogStoreCurrencies(
 
 /**
  * Monedas visibles al crear/editar productos:
- * moneda base de la tienda + monedas de las regiones de venta (sin el catálogo completo).
+ * moneda base + monedas de regiones publicadas en el panel (no filas huérfanas en BD).
  */
-export async function loadProductPricingCurrencies(
+export async function buildProductPricingCurrencies(
   schema: string,
-  storeId: string
+  storeId: string,
+  adminRegionCurrencyCodes: string[]
 ): Promise<StoreCurrencyRow[]> {
   const schemaQ = quoteIdent(schema)
+  const regionCodes = [
+    ...new Set(
+      adminRegionCurrencyCodes
+        .map((code) => code.trim().toLowerCase())
+        .filter(Boolean)
+    ),
+  ]
+
   const result = await getPlatformPool().query<StoreCurrencyRow>(
     `with pricing_codes as (
        select distinct lower(currency_code) as currency_code, min(priority) as priority
@@ -102,9 +111,8 @@ export async function loadProductPricingCurrencies(
          from ${schemaQ}.store_currency
          where store_id = $1 and deleted_at is null and is_default = true
          union all
-         select distinct lower(currency_code) as currency_code, 1 as priority
-         from ${schemaQ}.region
-         where deleted_at is null
+         select lower(code) as currency_code, 1 as priority
+         from unnest($2::text[]) as code
        ) codes
        group by lower(currency_code)
      ),
@@ -128,7 +136,7 @@ export async function loadProductPricingCurrencies(
       and lower(sc.currency_code) = pc.currency_code
       and sc.deleted_at is null
      order by pc.priority asc, pc.currency_code asc`,
-    [storeId]
+    [storeId, regionCodes]
   )
 
   if (result.rows.length > 0) {
@@ -145,6 +153,14 @@ export async function loadProductPricingCurrencies(
   )
 
   return fallback.rows
+}
+
+/** @deprecated Usar buildProductPricingCurrencies con regiones del panel admin */
+export async function loadProductPricingCurrencies(
+  schema: string,
+  storeId: string
+): Promise<StoreCurrencyRow[]> {
+  return buildProductPricingCurrencies(schema, storeId, [])
 }
 
 async function loadRegionStoreCurrencies(

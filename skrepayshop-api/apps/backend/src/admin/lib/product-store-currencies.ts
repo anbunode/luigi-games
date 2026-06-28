@@ -72,9 +72,13 @@ export function patchStoreCacheWithPricingCurrencies(
 export async function fetchProductPricingCurrencies(): Promise<
   PricingCurrencyRow[]
 > {
-  const response = await fetch("/admin/skrepay/pricing-currencies", {
-    credentials: "include",
-  })
+  const response = await fetch(
+    `/admin/skrepay/pricing-currencies?_ts=${Date.now()}`,
+    {
+      credentials: "include",
+      cache: "no-store",
+    }
+  )
 
   if (!response.ok) {
     return []
