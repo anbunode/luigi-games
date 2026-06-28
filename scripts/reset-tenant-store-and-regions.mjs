@@ -140,6 +140,86 @@ async function resetStoreCurrencies(client, schema, storeId) {
   return removed.rowCount ?? 0
 }
 
+async function softDeleteAllInSchema(client, schema, table) {
+  return softDeleteAll(client, schema, table)
+}
+
+async function purgePublicCommerceLeaks(client) {
+  const report = {
+    public_regions: 0,
+    public_region_countries: 0,
+    public_region_payment_providers: 0,
+    public_tax_regions: 0,
+    public_tax_rates: 0,
+    public_price_preferences: 0,
+    public_store_currencies: 0,
+  }
+
+  report.public_tax_rates = await softDeleteAllInSchema(client, "public", "tax_rate")
+  report.public_tax_regions = await softDeleteAllInSchema(client, "public", "tax_region")
+  report.public_region_payment_providers = await softDeleteAllInSchema(
+    client,
+    "public",
+    "region_payment_provider"
+  )
+  report.public_region_countries = await softDeleteAllInSchema(
+    client,
+    "public",
+    "region_country"
+  )
+  report.public_regions = await softDeleteAllInSchema(client, "public", "region")
+  report.public_price_preferences = await softDeleteAllInSchema(
+    client,
+    "public",
+    "price_preference"
+  )
+
+  if (await tableExists(client, "public", "store_currency")) {
+    const stores = await client.query(
+      `select id from public.store where deleted_at is null`
+    )
+    for (const store of stores.rows) {
+      const removed = await client.query(
+        `update public.store_currency
+         set deleted_at = now(), updated_at = now()
+         where store_id = $1 and deleted_at is null
+           and lower(currency_code) <> $2
+         returning id`,
+        [store.id, defaultCurrency]
+      )
+      report.public_store_currencies += removed.rowCount ?? 0
+
+      const existing = await client.query(
+        `select id from public.store_currency
+         where store_id = $1 and lower(currency_code) = $2
+         order by deleted_at nulls first limit 1`,
+        [store.id, defaultCurrency]
+      )
+      if (existing.rows[0]?.id) {
+        await client.query(
+          `update public.store_currency
+           set is_default = true, deleted_at = null, updated_at = now()
+           where id = $1`,
+          [existing.rows[0].id]
+        )
+      }
+    }
+  }
+
+  if (await tableExists(client, "public", "store")) {
+    await client.query(
+      `update public.store
+       set default_region_id = null,
+           default_location_id = null,
+           metadata = null,
+           updated_at = now()
+       where deleted_at is null`
+    )
+  }
+
+  return report
+}
+
 async function resetTenant(client, schema, tenantSlug) {
   const report = {
     slug: tenantSlug,
@@ -150,6 +230,12 @@ async function resetTenant(client, schema, tenantSlug) {
     region_countries: 0,
     region_payment_providers: 0,
     public_regions: 0,
+    public_region_countries: 0,
+    public_region_payment_providers: 0,
+    public_tax_regions: 0,
+    public_tax_rates: 0,
+    public_price_preferences: 0,
+    public_store_currencies: 0,
     currencies_removed: 0,
     price_preferences: 0,
     store_id: null,
@@ -180,7 +266,7 @@ async function resetTenant(client, schema, tenantSlug) {
       const prefs = await client.query(
         `update ${qTable(schema, "price_preference")}
          set deleted_at = now(), updated_at = now()
-         where deleted_at is null and attribute = 'currency_code'
+         where deleted_at is null
          returning id`
       )
       report.price_preferences = prefs.rowCount ?? 0
@@ -210,29 +296,8 @@ async function resetTenant(client, schema, tenantSlug) {
       )
     }
 
-    const publicRegions = await client.query(
-      `update public.region
-       set deleted_at = now(), updated_at = now()
-       where deleted_at is null
-       returning id`
-    )
-    report.public_regions = publicRegions.rowCount ?? 0
-
-    if (await tableExists(client, "public", "region_country")) {
-      await client.query(
-        `update public.region_country
-         set deleted_at = now(), updated_at = now()
-         where deleted_at is null`
-      )
-    }
-
-    if (await tableExists(client, "public", "region_payment_provider")) {
-      await client.query(
-        `update public.region_payment_provider
-         set deleted_at = now(), updated_at = now()
-         where deleted_at is null`
-      )
-    }
+    const publicReport = await purgePublicCommerceLeaks(client)
+    Object.assign(report, publicReport)
 
     await client.query("commit")
   } catch (error) {
