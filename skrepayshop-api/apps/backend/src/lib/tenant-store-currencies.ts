@@ -57,14 +57,12 @@ export async function loadStoreCurrenciesForScope(
   storeId: string,
   scope: StoreCurrencyScope
 ): Promise<StoreCurrencyRow[]> {
-  if (scope === "pricing") {
-    return []
-  }
-
   if (scope === "catalog") {
     return loadCatalogStoreCurrencies(schema, storeId)
   }
 
+  // pricing + regions: monedas de las regiones creadas (Medusa exige esto
+  // para habilitar las celdas de precio por región en el DataGrid)
   return loadRegionStoreCurrencies(schema, storeId)
 }
 
