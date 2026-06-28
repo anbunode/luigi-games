@@ -1,4 +1,5 @@
 import { Client } from "pg"
+import type { MedusaRequest } from "@medusajs/framework/http"
 import { generateEntityId } from "@medusajs/framework/utils"
 import { getPlatformPool } from "./platform-db"
 
@@ -42,15 +43,12 @@ export function readStoreCurrencyScopeFromRequest(input: {
 }
 
 export function readStoreCurrencyScopeFromMedusaRequest(
-  req: { headers?: Record<string, unknown> }
+  req: MedusaRequest
 ): StoreCurrencyScope {
-  const headers = req.headers ?? {}
-  const raw =
-    headers[STORE_CURRENCY_SCOPE_HEADER] ??
-    headers[STORE_CURRENCY_SCOPE_HEADER.toLowerCase()]
+  const raw = req.headers[STORE_CURRENCY_SCOPE_HEADER]
 
   return readStoreCurrencyScopeFromRequest({
-    header_scope: Array.isArray(raw) ? raw[0] : raw,
+    header_scope: typeof raw === "string" ? raw : undefined,
   })
 }
 
