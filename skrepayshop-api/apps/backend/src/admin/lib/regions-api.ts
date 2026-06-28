@@ -1,11 +1,9 @@
 export type RegionCountry = {
-  id?: string
   iso_2: string
   display_name: string
 }
 
 export type RegionCurrency = {
-  id?: string
   currency_code: string
   is_default: boolean
 }
@@ -21,17 +19,8 @@ export type SkrepayRegion = {
   updated_at?: string
 }
 
-export type RegionsListResponse = {
-  regions: SkrepayRegion[]
-  count?: number
-}
-
-export type RegionResponse = {
-  region: SkrepayRegion
-}
-
-export type CountryInput = { iso_2: string; display_name: string }
-export type CurrencyInput = { currency_code: string; is_default: boolean }
+export type CountryInput = RegionCountry
+export type CurrencyInput = RegionCurrency
 
 export type CreateRegionInput = {
   name: string
@@ -42,25 +31,25 @@ export type CreateRegionInput = {
 
 export type UpdateRegionInput = Partial<CreateRegionInput>
 
-export async function fetchRegions(): Promise<RegionsListResponse> {
+export async function fetchRegions() {
   const res = await fetch("/admin/regions", { credentials: "include" })
   if (!res.ok) {
     const data = await res.json().catch(() => null)
     throw new Error(data?.message || "No se pudieron cargar las regiones")
   }
-  return res.json()
+  return res.json() as Promise<{ regions: SkrepayRegion[] }>
 }
 
-export async function fetchRegion(id: string): Promise<RegionResponse> {
+export async function fetchRegion(id: string) {
   const res = await fetch(`/admin/regions/${id}`, { credentials: "include" })
   if (!res.ok) {
     const data = await res.json().catch(() => null)
     throw new Error(data?.message || "Región no encontrada")
   }
-  return res.json()
+  return res.json() as Promise<{ region: SkrepayRegion }>
 }
 
-export async function createRegion(payload: CreateRegionInput): Promise<RegionResponse> {
+export async function createRegion(payload: CreateRegionInput) {
   const res = await fetch("/admin/regions", {
     method: "POST",
     credentials: "include",
@@ -71,13 +60,10 @@ export async function createRegion(payload: CreateRegionInput): Promise<RegionRe
     const data = await res.json().catch(() => null)
     throw new Error(data?.message || "No se pudo crear la región")
   }
-  return res.json()
+  return res.json() as Promise<{ region: SkrepayRegion }>
 }
 
-export async function updateRegion(
-  id: string,
-  payload: UpdateRegionInput
-): Promise<RegionResponse> {
+export async function updateRegion(id: string, payload: UpdateRegionInput) {
   const res = await fetch(`/admin/regions/${id}`, {
     method: "POST",
     credentials: "include",
@@ -88,10 +74,10 @@ export async function updateRegion(
     const data = await res.json().catch(() => null)
     throw new Error(data?.message || "No se pudo actualizar la región")
   }
-  return res.json()
+  return res.json() as Promise<{ region: SkrepayRegion }>
 }
 
-export async function deleteRegion(id: string): Promise<void> {
+export async function deleteRegion(id: string) {
   const res = await fetch(`/admin/regions/${id}`, {
     method: "DELETE",
     credentials: "include",
@@ -103,5 +89,31 @@ export async function deleteRegion(id: string): Promise<void> {
 }
 
 export function formatCurrencyLabel(code: string): string {
-  return code.toUpperCase()
+  const upper = code.toUpperCase()
+  const names: Record<string, string> = {
+    USD: "Dólar estadounidense",
+    EUR: "Euro",
+    GBP: "Libra esterlina",
+    MXN: "Peso mexicano",
+    BRL: "Real brasileño",
+    ARS: "Peso argentino",
+    CLP: "Peso chileno",
+    COP: "Peso colombiano",
+    PEN: "Sol peruano",
+    VES: "Bolívar venezolano",
+  }
+  const name = names[upper]
+  return name ? `${name} (${upper} $)` : upper
+}
+
+export function regionCustomizationsSummary(region: SkrepayRegion): string {
+  const parts: string[] = []
+  if (region.currencies?.length) {
+    const code = region.currencies.find((c) => c.is_default)?.currency_code
+    if (code) parts.push(formatCurrencyLabel(code))
+  }
+  if (region.countries?.length > 1) {
+    parts.push(`${region.countries.length} países`)
+  }
+  return parts.join(" · ") || "—"
 }
