@@ -123,7 +123,7 @@ try {
   const tenantResult = await resetSchemaStoreCurrencies(schema)
   const publicResult = await resetSchemaStoreCurrencies("public")
 
-  for (const table of ["tax_rate", "tax_region", "region_country", "region_payment_provider", "region"]) {
+  for (const table of ["tax_rate", "tax_region", "region_payment_provider", "region"]) {
     if (await tableExists(schema, table)) {
       await client.query(
         `update ${q(schema, table)} set deleted_at = now(), updated_at = now() where deleted_at is null`
@@ -134,6 +134,31 @@ try {
         `update public."${table}" set deleted_at = now(), updated_at = now() where deleted_at is null`
       )
     }
+  }
+
+  // Solo países asignados a regiones — nunca borrar el catálogo global (region_id is null)
+  for (const schemaName of [schema, "public"]) {
+    if (await tableExists(schemaName, "region_country")) {
+      await client.query(
+        `update ${q(schemaName, "region_country")}
+         set deleted_at = now(), updated_at = now()
+         where region_id is not null and deleted_at is null`
+      )
+    }
+  }
+
+  // Re-sembrar pool tenant si quedó vacío
+  if (schema !== "public") {
+    await client.query(
+      `insert into ${q(schema, "region_country")}
+         (iso_2, iso_3, num_code, name, display_name, region_id, created_at, updated_at, deleted_at)
+       select iso_2, iso_3, num_code, name, display_name, null, now(), now(), null
+       from public.region_country
+       where region_id is null and deleted_at is null
+       on conflict (iso_2) do update
+         set deleted_at = null, updated_at = now()
+       where ${q(schema, "region_country")}.region_id is null`
+    )
   }
 
   await client.query("commit")

@@ -162,11 +162,15 @@ async function purgePublicCommerceLeaks(client) {
     "public",
     "region_payment_provider"
   )
-  report.public_region_countries = await softDeleteAllInSchema(
-    client,
-    "public",
-    "region_country"
-  )
+  // No borrar el catálogo global de países (region_id null) — necesario para crear regiones
+  report.public_region_countries = (
+    await client.query(
+      `update public.region_country
+       set deleted_at = now(), updated_at = now()
+       where region_id is not null and deleted_at is null
+       returning iso_2`
+    )
+  ).rowCount ?? 0
   report.public_regions = await softDeleteAllInSchema(client, "public", "region")
   report.public_price_preferences = await softDeleteAllInSchema(
     client,
@@ -298,6 +302,24 @@ async function resetTenant(client, schema, tenantSlug) {
 
     const publicReport = await purgePublicCommerceLeaks(client)
     Object.assign(report, publicReport)
+
+    if (await tableExists(client, schema, "region_country")) {
+      await client.query(
+        `insert into ${qTable(schema, "region_country")}
+           (iso_2, iso_3, num_code, name, display_name, region_id, created_at, updated_at, deleted_at)
+         select iso_2, iso_3, num_code, name, display_name, null, now(), now(), null
+         from public.region_country
+         where region_id is null and deleted_at is null
+         on conflict (iso_2) do update
+           set iso_3 = excluded.iso_3,
+               num_code = excluded.num_code,
+               name = excluded.name,
+               display_name = excluded.display_name,
+               deleted_at = null,
+               updated_at = now()
+         where ${qTable(schema, "region_country")}.region_id is null`
+      )
+    }
 
     await client.query("commit")
   } catch (error) {

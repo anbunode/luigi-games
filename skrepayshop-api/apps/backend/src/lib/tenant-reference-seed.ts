@@ -103,8 +103,8 @@ async function seedTenantRegionCountryPool(
 
   const result = await client.query(
     `insert into ${schemaQ}.region_country
-       (iso_2, iso_3, num_code, name, display_name, region_id, created_at, updated_at)
-     select iso_2, iso_3, num_code, name, display_name, null, now(), now()
+       (iso_2, iso_3, num_code, name, display_name, region_id, created_at, updated_at, deleted_at)
+     select iso_2, iso_3, num_code, name, display_name, null, now(), now(), null
      from public.region_country
      where region_id is null
      on conflict (iso_2) do update
@@ -112,6 +112,7 @@ async function seedTenantRegionCountryPool(
            num_code = excluded.num_code,
            name = excluded.name,
            display_name = excluded.display_name,
+           deleted_at = null,
            updated_at = now()
      where ${schemaQ}.region_country.region_id is null`
   )
