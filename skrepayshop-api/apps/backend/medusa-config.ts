@@ -31,11 +31,8 @@ module.exports = defineConfig({
     storefront_theme: {
       resolve: "./src/modules/storefront-theme",
     },
-    macro_region: {
-      resolve: "./src/modules/macro_region",
-      definition: {
-        isQueryable: true,
-      },
+    skrepay_region: {
+      resolve: "./src/modules/skrepay_region",
     },
   },
 })
