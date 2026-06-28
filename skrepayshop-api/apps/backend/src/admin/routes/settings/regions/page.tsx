@@ -257,6 +257,8 @@ function RegionsSettingsPage() {
 
 export const config = defineRouteConfig({
   label: "Regiones",
+  icon: GlobeEurope,
+  rank: 2,
 })
 
 export default RegionsSettingsPage

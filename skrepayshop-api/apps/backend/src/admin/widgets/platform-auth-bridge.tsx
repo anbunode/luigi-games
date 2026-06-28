@@ -25,6 +25,7 @@ export const config = defineWidgetConfig({
     "store.details.before",
     "promotion.list.before",
     "inventory_item.list.before",
+    "region.list.before",
     "login.before",
   ],
 })
