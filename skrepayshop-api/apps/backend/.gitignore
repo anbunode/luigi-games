@@ -24,3 +24,10 @@ build
 !.yarn/versions
 
 .medusa
+
+# Debug / scratch scripts (never commit these)
+check-*.ts
+test-*.js
+src/scripts/seed-*.ts
+src/scripts/query-*.ts
+src/scripts/dump-*.ts

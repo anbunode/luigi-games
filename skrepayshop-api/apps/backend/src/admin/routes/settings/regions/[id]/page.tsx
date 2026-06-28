@@ -14,7 +14,7 @@ import {
   ArrowLeft,
   CurrencyDollar,
   ReceiptPercent,
-  Truck,
+  TruckFast,
   CreditCard,
 } from "@medusajs/icons"
 import { RegionStatusBadge } from "../../../../components/regions/RegionStatusBadge"
@@ -234,7 +234,7 @@ export default function RegionDetailPage() {
             />
 
             <RegionConfigItem
-              icon={<Truck className="w-4 h-4" />}
+              icon={<TruckFast className="w-4 h-4" />}
               label="Envío"
               value=""
               comingSoon
