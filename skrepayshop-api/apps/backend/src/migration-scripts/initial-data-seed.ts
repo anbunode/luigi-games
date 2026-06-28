@@ -15,7 +15,6 @@ import {
   linkSalesChannelsToApiKeyWorkflow,
   linkSalesChannelsToStockLocationWorkflow,
 } from "@medusajs/medusa/core-flows";
-import { seedShellCatalog } from "../lib/shell-catalog";
 
 export default async function initial_data_seed({
   container,
@@ -221,11 +220,4 @@ export default async function initial_data_seed({
     },
   });
   logger.info("Finished seeding stock location data.");
-
-  await seedShellCatalog({
-    container,
-    shippingProfileId: shippingProfile.id,
-    salesChannelId: defaultSalesChannel.id,
-    stockLocationId: stockLocation.id,
-  });
 }

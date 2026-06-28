@@ -45,6 +45,14 @@ node scripts/apply-platform-migrations.mjs
 
 Aplica todos los `.sql` contra la BD configurada en `apps/backend/.env`.
 
+### Reinicio completo (borrar tenants + plataforma)
+
+```bash
+node scripts/reset-ecosystem-database.mjs --confirm
+```
+
+Ver `docs/RESET-ECOSYSTEM.md`.
+
 ### Opción B — Supabase CLI + GitHub (recomendado a medio plazo)
 
 1. Instala [Supabase CLI](https://supabase.com/docs/guides/cli)

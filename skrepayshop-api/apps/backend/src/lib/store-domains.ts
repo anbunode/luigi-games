@@ -1,5 +1,21 @@
-import { domainToStorefrontUrl, normalizeDomainName } from "./dns-instructions"
 import { getPlatformPool } from "./platform-db"
+
+function normalizeDomainName(input: string): string {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .replace(/\.$/, "")
+}
+
+function domainToStorefrontUrl(domain: string): string {
+  const normalized = normalizeDomainName(domain)
+  if (!normalized) {
+    return ""
+  }
+  return `https://${normalized}`
+}
 
 export type StoreDomainStatus = "pending" | "verifying" | "active" | "failed"
 

@@ -1,5 +1,4 @@
 /**
- * Traducciones extra de SkrepayShop para widgets/rutas custom.
- * El panel core de Medusa ya incluye español (es.json) en @medusajs/dashboard.
+ * Traducciones extra de SkrepayShop (vacío — usamos el panel nativo de Medusa).
  */
 export default {}

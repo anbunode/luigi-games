@@ -15,7 +15,6 @@
   "scripts": {
     "build": "medusa build --lint false",
     "predeploy": "medusa db:migrate",
-    "shell-reset": "medusa exec ./src/scripts/reset-shell-catalog.ts",
     "start": "medusa start --host 0.0.0.0",
     "dev": "medusa develop",
     "lint": "medusa lint",
