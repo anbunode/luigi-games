@@ -1,5 +1,4 @@
 import { getPlatformLoginUrl } from "./platform-url"
-import { notifyRouteChange } from "./store-currency-scope"
 
 declare global {
   interface Window {
@@ -66,9 +65,7 @@ export function installAuthBridge() {
       window.location.replace(loginUrl)
       return
     }
-    const result = originalPushState(...args)
-    notifyRouteChange()
-    return result
+    return originalPushState(...args)
   }) as History["pushState"]
 
   const originalReplaceState = history.replaceState.bind(history)
@@ -77,8 +74,6 @@ export function installAuthBridge() {
       window.location.replace(loginUrl)
       return
     }
-    const result = originalReplaceState(...args)
-    notifyRouteChange()
-    return result
+    return originalReplaceState(...args)
   }) as History["replaceState"]
 }
