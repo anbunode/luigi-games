@@ -7,7 +7,7 @@ import { getAuthContextFromJwtToken } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
 import { getPlatformPool } from "./platform-db"
 import {
-  loadStoreEnabledCurrencies,
+  loadStoreCurrenciesForScope,
   loadMasterCurrencyCatalog,
   syncStoreSupportedCurrencies,
   type StoreCurrencyInput,
@@ -124,12 +124,12 @@ async function attachSupportedCurrencies<T extends { id: string }>(
   schema: string,
   stores: T[]
 ) {
-  const byStore = new Map<string, Awaited<ReturnType<typeof loadStoreEnabledCurrencies>>>()
+  const byStore = new Map<string, Awaited<ReturnType<typeof loadStoreCurrenciesForScope>>>()
 
   for (const store of stores) {
     byStore.set(
       store.id,
-      await loadStoreEnabledCurrencies(schema, store.id)
+      await loadStoreCurrenciesForScope(schema, store.id, "catalog")
     )
   }
 
