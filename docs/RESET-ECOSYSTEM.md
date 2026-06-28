@@ -13,7 +13,10 @@ Medusa vuelve a funcionar **de forma nativa** (panel, regiones, productos, pedid
 - Módulos custom: `storefront_theme`, `skrepay_region`
 - UI admin custom: regiones, dominios, tema, borradores, carritos abandonados, SEO
 - APIs custom que reemplazaban Medusa: `/admin/regions`, storefront-theme, etc.
-- Shims del panel (`tenant-admin-shim`, `hide-legacy-regions-nav`)
+
+## Qué se mantiene en el backend (multi-tenant, no es UI custom)
+
+- `tenant-admin-shim.ts` — necesario para que `/admin/users/me`, `/admin/stores` y `/admin/sales-channels` lean el schema `t_{slug}`. Sin esto el panel rebota al login de skrepay.com.
 
 ## Reiniciar base de datos (Supabase)
 
