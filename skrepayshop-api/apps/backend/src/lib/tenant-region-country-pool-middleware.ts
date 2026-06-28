@@ -6,9 +6,8 @@ import type {
 import {
   resolveTenantForAdminRequest,
   resolveTenantSchema,
-  setTenantSearchPath,
 } from "./tenant-db-scope"
-import { enterTenantSchema } from "./tenant-schema-context"
+import { bindRequestTenantSchema } from "./tenant-schema-context"
 import { syncTenantRegionCountryPool } from "./tenant-region-countries"
 
 type ScopedRequest = MedusaRequest & {
@@ -47,8 +46,7 @@ export async function tenantRegionCountryPoolMiddleware(
     return
   }
 
-  enterTenantSchema(schema)
-  await setTenantSearchPath(req.scope, schema)
+  bindRequestTenantSchema(schema)
 
   try {
     await syncTenantRegionCountryPool(schema)

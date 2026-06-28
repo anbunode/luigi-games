@@ -2,13 +2,15 @@ import { AsyncLocalStorage } from "node:async_hooks"
 
 export const tenantSchemaStorage = new AsyncLocalStorage<string>()
 
-export function getActiveTenantSchema(): string | undefined {
-  return tenantSchemaStorage.getStore()
+/** Schema activo para la petición HTTP actual (fallback cuando ALS no propaga). */
+let requestBoundTenantSchema: string | undefined
+
+export function bindRequestTenantSchema(schema: string | undefined): void {
+  requestBoundTenantSchema = schema
 }
 
-/** Persiste el schema tenant en toda la cadena async del request HTTP. */
-export function enterTenantSchema(schema: string): void {
-  tenantSchemaStorage.enterWith(schema)
+export function getActiveTenantSchema(): string | undefined {
+  return tenantSchemaStorage.getStore() ?? requestBoundTenantSchema
 }
 
 export function runWithTenantSchema<T>(
