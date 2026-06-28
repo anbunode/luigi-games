@@ -23,7 +23,7 @@ type RegionTaxSummary = {
 }
 
 function isProductPricingPage() {
-  const path = window.location.pathname
+  const path = window.location.pathname.replace(/^\/app(?=\/|$)/, "") || "/"
   return (
     /\/products\/create\b/.test(path) ||
     /\/products\/[^/]+\/prices\b/.test(path) ||

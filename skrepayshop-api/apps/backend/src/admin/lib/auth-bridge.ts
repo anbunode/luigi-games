@@ -1,6 +1,7 @@
 import { getPlatformLoginUrl } from "./platform-url"
 import {
   isPricingContext,
+  normalizeAdminPathname,
   notifyRouteChange,
 } from "./store-currency-scope"
 
@@ -134,7 +135,7 @@ export function installAuthBridge() {
     const shouldPatchStoreCurrencies =
       method === "GET" &&
       isStoreApiUrl(url) &&
-      isPricingContext(window.location.pathname) &&
+      isPricingContext(normalizeAdminPathname(window.location.pathname)) &&
       response.ok
 
     if (!shouldPatchStoreCurrencies) {

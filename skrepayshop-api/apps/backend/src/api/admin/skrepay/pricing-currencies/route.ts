@@ -8,7 +8,7 @@ import {
   resolveTenantSchema,
 } from "../../../../lib/tenant-db-scope"
 import { getPlatformPool } from "../../../../lib/platform-db"
-import { loadStoreCurrenciesForScope } from "../../../../lib/tenant-store-currencies"
+import { loadProductPricingCurrencies } from "../../../../lib/tenant-store-currencies"
 
 type ScopedRequest = MedusaRequest & {
   skrepayTenantSchema?: string
@@ -36,7 +36,7 @@ async function resolveRequestSchema(req: MedusaRequest): Promise<string | null> 
 
 /**
  * GET /admin/skrepay/pricing-currencies
- * Monedas usadas por las regiones de venta (solo para grillas de precio en productos).
+ * Moneda base de la tienda + monedas de regiones (grilla de precios en productos).
  */
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const schema = await resolveRequestSchema(req)
@@ -61,11 +61,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
-  const supported_currencies = await loadStoreCurrenciesForScope(
-    schema,
-    storeId,
-    "pricing"
-  )
+  const supported_currencies = await loadProductPricingCurrencies(schema, storeId)
 
   res.json({ supported_currencies, store_id: storeId })
 }

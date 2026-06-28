@@ -61,8 +61,10 @@ export async function loadStoreCurrenciesForScope(
     return loadCatalogStoreCurrencies(schema, storeId)
   }
 
-  // pricing + regions: monedas de las regiones creadas (Medusa exige esto
-  // para habilitar las celdas de precio por región en el DataGrid)
+  if (scope === "pricing") {
+    return loadProductPricingCurrencies(schema, storeId)
+  }
+
   return loadRegionStoreCurrencies(schema, storeId)
 }
 
@@ -81,6 +83,68 @@ async function loadCatalogStoreCurrencies(
   )
 
   return result.rows
+}
+
+/**
+ * Monedas visibles al crear/editar productos:
+ * moneda base de la tienda + monedas de las regiones de venta (sin el catálogo completo).
+ */
+export async function loadProductPricingCurrencies(
+  schema: string,
+  storeId: string
+): Promise<StoreCurrencyRow[]> {
+  const schemaQ = quoteIdent(schema)
+  const result = await getPlatformPool().query<StoreCurrencyRow>(
+    `with pricing_codes as (
+       select distinct lower(currency_code) as currency_code, min(priority) as priority
+       from (
+         select lower(currency_code) as currency_code, 0 as priority
+         from ${schemaQ}.store_currency
+         where store_id = $1 and deleted_at is null and is_default = true
+         union all
+         select distinct lower(currency_code) as currency_code, 1 as priority
+         from ${schemaQ}.region
+         where deleted_at is null
+       ) codes
+       group by lower(currency_code)
+     ),
+     default_code as (
+       select lower(currency_code) as currency_code
+       from ${schemaQ}.store_currency
+       where store_id = $1 and deleted_at is null and is_default = true
+       limit 1
+     )
+     select
+       coalesce(sc.id, concat('stocur_', substr(md5($1 || ':' || pc.currency_code), 1, 26))) as id,
+       pc.currency_code,
+       (pc.currency_code = (select currency_code from default_code)) as is_default,
+       $1::text as store_id,
+       coalesce(sc.created_at, now()) as created_at,
+       coalesce(sc.updated_at, now()) as updated_at,
+       null::timestamptz as deleted_at
+     from pricing_codes pc
+     left join ${schemaQ}.store_currency sc
+       on sc.store_id = $1
+      and lower(sc.currency_code) = pc.currency_code
+      and sc.deleted_at is null
+     order by pc.priority asc, pc.currency_code asc`,
+    [storeId]
+  )
+
+  if (result.rows.length > 0) {
+    return result.rows
+  }
+
+  const fallback = await getPlatformPool().query<StoreCurrencyRow>(
+    `select
+       id, currency_code, is_default, store_id, created_at, updated_at, deleted_at
+     from ${schemaQ}.store_currency
+     where deleted_at is null and store_id = $1 and is_default = true
+     limit 1`,
+    [storeId]
+  )
+
+  return fallback.rows
 }
 
 async function loadRegionStoreCurrencies(

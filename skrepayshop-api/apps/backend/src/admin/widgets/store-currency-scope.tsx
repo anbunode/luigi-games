@@ -1,15 +1,17 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { useQueryClient } from "@tanstack/react-query"
 import { useLayoutEffect, useRef } from "react"
+import { applyProductPricingCurrenciesToCache } from "../lib/product-store-currencies"
 import {
+  isPricingContext,
   resolveStoreCurrencyMode,
   SKREPAY_ROUTE_CHANGE_EVENT,
   type StoreCurrencyMode,
 } from "../lib/store-currency-scope"
 
 /**
- * Solo invalida la caché de tienda al cruzar el límite catálogo ↔ precios.
- * Navegar entre Tienda y Regiones NO debe recargar monedas (evita parpadeos).
+ * Al entrar en productos aplica moneda base + regiones en caché.
+ * Al salir a tienda/regiones recarga el catálogo completo.
  */
 const StoreCurrencyScopeSync = () => {
   const queryClient = useQueryClient()
@@ -18,24 +20,38 @@ const StoreCurrencyScopeSync = () => {
   )
 
   useLayoutEffect(() => {
-    const syncOnModeChange = () => {
+    const syncOnModeChange = async () => {
       const mode = resolveStoreCurrencyMode(window.location.pathname)
 
       if (mode === lastModeRef.current) {
+        if (mode === "pricing") {
+          await applyProductPricingCurrenciesToCache(queryClient)
+        }
         return
       }
 
       lastModeRef.current = mode
+
+      if (mode === "pricing") {
+        await applyProductPricingCurrenciesToCache(queryClient)
+        return
+      }
+
       queryClient.invalidateQueries({ queryKey: ["store"] })
     }
 
-    syncOnModeChange()
-    window.addEventListener(SKREPAY_ROUTE_CHANGE_EVENT, syncOnModeChange)
-    window.addEventListener("popstate", syncOnModeChange)
+    void syncOnModeChange()
+
+    const onRouteChange = () => {
+      void syncOnModeChange()
+    }
+
+    window.addEventListener(SKREPAY_ROUTE_CHANGE_EVENT, onRouteChange)
+    window.addEventListener("popstate", onRouteChange)
 
     return () => {
-      window.removeEventListener(SKREPAY_ROUTE_CHANGE_EVENT, syncOnModeChange)
-      window.removeEventListener("popstate", syncOnModeChange)
+      window.removeEventListener(SKREPAY_ROUTE_CHANGE_EVENT, onRouteChange)
+      window.removeEventListener("popstate", onRouteChange)
     }
   }, [queryClient])
 

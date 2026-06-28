@@ -2,17 +2,23 @@
  * Modos de moneda del panel — fuente única de verdad para rutas.
  *
  * - catalog: tienda, regiones, impuestos (catálogo completo, estable)
- * - pricing: productos / precios (solo monedas de regiones activas)
+ * - pricing: productos (moneda base + monedas de regiones)
  */
 export type StoreCurrencyMode = "catalog" | "pricing"
 
 export const SKREPAY_ROUTE_CHANGE_EVENT = "skrepay:route-change"
 
+export function normalizeAdminPathname(pathname: string): string {
+  return pathname.replace(/^\/app(?=\/|$)/, "") || "/"
+}
+
 export function isPricingContext(pathname: string): boolean {
+  const path = normalizeAdminPathname(pathname)
+
   return (
-    /\/products\/create\b/.test(pathname) ||
-    /\/products\/[^/]+\/prices\b/.test(pathname) ||
-    (/\/products\/[^/]+$/.test(pathname) && !/\/products$/.test(pathname))
+    /\/products\/create\b/.test(path) ||
+    /\/products\/[^/]+\/prices\b/.test(path) ||
+    (/\/products\/[^/]+$/.test(path) && !/\/products$/.test(path))
   )
 }
 
