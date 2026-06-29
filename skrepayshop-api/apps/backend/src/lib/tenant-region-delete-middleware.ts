@@ -5,7 +5,6 @@ import type {
 } from "@medusajs/framework/http"
 import { getPlatformPool } from "./platform-db"
 import { releaseRegionCountries } from "./tenant-region-countries"
-import { syncStoreCurrenciesFromRegionsForTenant } from "./tenant-store-currencies"
 import {
   resolveTenantForAdminRequest,
   resolveTenantSchema,
@@ -73,9 +72,7 @@ export async function tenantRegionDeleteMiddleware(
 
   res.json = ((body: unknown) => {
     if (res.statusCode < 400) {
-      softDeleteTenantRegion(schema, regionId)
-        .then(() => syncStoreCurrenciesFromRegionsForTenant(schema))
-        .catch(() => undefined)
+      softDeleteTenantRegion(schema, regionId).catch(() => undefined)
     }
 
     return originalJson(body)

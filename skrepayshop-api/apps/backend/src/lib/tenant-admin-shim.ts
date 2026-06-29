@@ -10,8 +10,6 @@ import {
   loadStoreEnabledCurrenciesForAdmin,
   loadMasterCurrencyCatalog,
   loadMasterCurrencyCatalogForAdmin,
-  syncStoreCurrenciesFromRegions,
-  syncStoreCurrenciesFromRegionsForTenant,
   syncStoreSupportedCurrencies,
   type StoreCurrencyInput,
 } from "./tenant-store-currencies"
@@ -321,12 +319,11 @@ export async function tenantAdminStoreByIdPostShim(
     }
 
     if (body.supported_currencies !== undefined) {
-      const currencies = (body.supported_currencies ?? []).map(
-        ({ is_tax_inclusive: _ignored, ...currency }) => currency
+      await syncStoreSupportedCurrencies(
+        schema,
+        id,
+        body.supported_currencies ?? []
       )
-
-      await syncStoreSupportedCurrencies(schema, id, currencies)
-      await syncStoreCurrenciesFromRegions(schema, id)
     }
 
     const updatedRows = await loadStoreRows(schema, id)
@@ -369,8 +366,6 @@ export async function tenantAdminStoresShim(
       })
       return
     }
-
-    await syncStoreCurrenciesFromRegionsForTenant(schema)
 
     const stores = await attachSupportedCurrencies(schema, rows)
 

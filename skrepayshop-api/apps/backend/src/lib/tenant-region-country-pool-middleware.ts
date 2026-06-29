@@ -9,7 +9,6 @@ import {
 } from "./tenant-db-scope"
 import { bindRequestTenantSchema } from "./tenant-schema-context"
 import { syncTenantRegionCountryPool } from "./tenant-region-countries"
-import { syncStoreCurrenciesFromRegionsForTenant } from "./tenant-store-currencies"
 
 type ScopedRequest = MedusaRequest & {
   skrepayTenantSchema?: string
@@ -51,7 +50,6 @@ export async function tenantRegionCountryPoolMiddleware(
 
   try {
     await syncTenantRegionCountryPool(schema)
-    await syncStoreCurrenciesFromRegionsForTenant(schema)
   } catch {
     // no bloquear el flujo nativo si el sync falla
   }

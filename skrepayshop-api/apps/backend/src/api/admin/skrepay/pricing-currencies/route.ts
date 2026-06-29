@@ -12,7 +12,6 @@ import {
   listTenantRegionCurrencyCodes,
   loadProductPricingCurrenciesForAdmin,
   resolveActiveRegionCurrencyCodes,
-  syncStoreCurrenciesFromRegionsForTenant,
 } from "../../../../lib/tenant-store-currencies"
 
 type ScopedRequest = MedusaRequest & {
@@ -52,8 +51,6 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       "Tenant context required"
     )
   }
-
-  await syncStoreCurrenciesFromRegionsForTenant(schema)
 
   const stores = await getPlatformPool().query<{ id: string }>(
     `select id from ${quoteSchema(schema)}.store where deleted_at is null order by created_at asc limit 1`
