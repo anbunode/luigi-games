@@ -22,7 +22,7 @@ let overlayCurrencies: RegionFormCurrencyRow[] = []
 let overlayActive = false
 let cacheUnsubscribe: (() => void) | null = null
 
-function isStoreQueryKey(queryKey: QueryKey): boolean {
+export function isStoreQueryKey(queryKey: QueryKey): boolean {
   if (!Array.isArray(queryKey)) {
     return false
   }
@@ -42,13 +42,13 @@ function isStoreQueryKey(queryKey: QueryKey): boolean {
   return false
 }
 
-function snapshotStoreCache(queryClient: QueryClient): StoreCacheSnapshot {
+export function snapshotStoreCache(queryClient: QueryClient): StoreCacheSnapshot {
   return queryClient.getQueriesData({
     predicate: (query) => isStoreQueryKey(query.queryKey),
   })
 }
 
-function restoreStoreCache(
+export function restoreStoreCache(
   queryClient: QueryClient,
   snapshot: StoreCacheSnapshot
 ) {
@@ -67,7 +67,7 @@ function patchStoreRecord(
   }
 }
 
-function patchStoreCacheWithCurrencies(
+export function patchStoreCacheWithCurrencies(
   queryClient: QueryClient,
   currencies: RegionFormCurrencyRow[]
 ) {

@@ -9,6 +9,8 @@ import { getPlatformPool } from "./platform-db"
 import {
   loadStoreEnabledCurrenciesForAdmin,
   loadMasterCurrencyCatalog,
+  syncStoreCurrenciesFromRegions,
+  syncStoreCurrenciesFromRegionsForTenant,
   syncStoreSupportedCurrencies,
   type StoreCurrencyInput,
 } from "./tenant-store-currencies"
@@ -293,6 +295,7 @@ export async function tenantAdminStoreByIdPostShim(
       )
 
       await syncStoreSupportedCurrencies(schema, id, currencies)
+      await syncStoreCurrenciesFromRegions(schema, id)
     }
 
     const updatedRows = await loadStoreRows(schema, id)
@@ -314,6 +317,8 @@ export async function tenantAdminStoresShim(
       next()
       return
     }
+
+    await syncStoreCurrenciesFromRegionsForTenant(schema)
 
     const rows = await loadStoreRows(schema)
     const stores = await attachSupportedCurrencies(schema, rows)

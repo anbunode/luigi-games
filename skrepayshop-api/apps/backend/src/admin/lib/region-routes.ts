@@ -28,6 +28,17 @@ export function isStoreCurrencyManagementPage(pathname: string): boolean {
   )
 }
 
+/** Crear/editar producto o tabla de precios de variantes */
+export function isProductPricingPage(pathname: string): boolean {
+  const path = normalizeAdminPathname(pathname)
+
+  return (
+    /\/products\/create\b/.test(path) ||
+    /\/products\/[^/]+\/prices\b/.test(path) ||
+    (/\/products\/[^/]+$/.test(path) && !/\/products$/.test(path))
+  )
+}
+
 export function notifyRouteChange() {
   window.dispatchEvent(new Event(SKREPAY_ROUTE_CHANGE_EVENT))
 }

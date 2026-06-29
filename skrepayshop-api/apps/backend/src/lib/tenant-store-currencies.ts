@@ -329,6 +329,174 @@ export async function buildProductPricingCurrencies(
   return fallback.rows
 }
 
+export async function listTenantRegionCurrencyCodes(
+  schema: string
+): Promise<string[]> {
+  const schemaQ = quoteIdent(schema)
+  const result = await getPlatformPool().query<{ currency_code: string }>(
+    `select distinct lower(currency_code) as currency_code
+     from ${schemaQ}.region
+     where deleted_at is null
+     order by currency_code asc`
+  )
+
+  return result.rows.map((row) => row.currency_code)
+}
+
+/** Moneda base + monedas de regiones, deduplicadas, con metadata para el admin. */
+export async function loadProductPricingCurrenciesForAdmin(
+  schema: string,
+  storeId: string,
+  adminRegionCurrencyCodes?: string[]
+): Promise<AdminStoreCurrencyRow[]> {
+  const regionCodes =
+    adminRegionCurrencyCodes ??
+    (await listTenantRegionCurrencyCodes(schema))
+
+  const pricingRows = await buildProductPricingCurrencies(
+    schema,
+    storeId,
+    regionCodes
+  )
+
+  if (!pricingRows.length) {
+    return []
+  }
+
+  const schemaQ = quoteIdent(schema)
+  const codes = pricingRows.map((row) => row.currency_code.toLowerCase())
+  const catalog = await getPlatformPool().query<{
+    code: string
+    symbol: string
+    symbol_native: string
+    name: string
+    decimal_digits: number
+    rounding: number | string
+  }>(
+    `select code, symbol, symbol_native, name, decimal_digits, rounding
+     from ${schemaQ}.currency
+     where deleted_at is null and lower(code) = any($1::text[])`,
+    [codes]
+  )
+
+  const catalogByCode = new Map(
+    catalog.rows.map((row) => [row.code.toLowerCase(), row])
+  )
+
+  return pricingRows.map((row) => {
+    const meta = catalogByCode.get(row.currency_code.toLowerCase())
+
+    return {
+      ...row,
+      currency: {
+        code: meta?.code ?? row.currency_code,
+        symbol: meta?.symbol ?? row.currency_code.toUpperCase(),
+        symbol_native: meta?.symbol_native ?? row.currency_code.toUpperCase(),
+        name: meta?.name ?? row.currency_code.toUpperCase(),
+        decimal_digits: meta?.decimal_digits ?? 2,
+        rounding: meta?.rounding ?? 0,
+      },
+    }
+  })
+}
+
+/**
+ * La tienda solo conserva la moneda base y las monedas usadas por regiones activas.
+ * Las regiones gobiernan qué monedas habilitan precios editables en productos.
+ */
+export async function syncStoreCurrenciesFromRegions(
+  schema: string,
+  storeId: string
+): Promise<void> {
+  const schemaQ = quoteIdent(schema)
+  const pool = getPlatformPool()
+  const regionCodes = await listTenantRegionCurrencyCodes(schema)
+
+  const defaultRow = await pool.query<{ currency_code: string }>(
+    `select lower(currency_code) as currency_code
+     from ${schemaQ}.store_currency
+     where store_id = $1 and deleted_at is null and is_default = true
+     limit 1`,
+    [storeId]
+  )
+
+  const defaultCode = defaultRow.rows[0]?.currency_code ?? "usd"
+  const requiredCodes = [...new Set([defaultCode, ...regionCodes])]
+
+  for (const code of requiredCodes) {
+    const existing = await pool.query<{ id: string }>(
+      `select id from ${schemaQ}.store_currency
+       where store_id = $1 and lower(currency_code) = $2
+       order by deleted_at nulls first
+       limit 1`,
+      [storeId, code]
+    )
+
+    if (existing.rows[0]?.id) {
+      await pool.query(
+        `update ${schemaQ}.store_currency
+         set deleted_at = null,
+             is_default = (lower(currency_code) = $2),
+             updated_at = now()
+         where id = $1`,
+        [existing.rows[0].id, defaultCode]
+      )
+      continue
+    }
+
+    await pool.query(
+      `insert into ${schemaQ}.store_currency
+         (id, currency_code, store_id, is_default, created_at, updated_at)
+       values ($1, $2, $3, $4, now(), now())`,
+      [
+        generateEntityId(undefined, "stocur"),
+        code,
+        storeId,
+        code === defaultCode,
+      ]
+    )
+  }
+
+  await pool.query(
+    `update ${schemaQ}.store_currency
+     set deleted_at = now(), updated_at = now()
+     where store_id = $1
+       and deleted_at is null
+       and not (lower(currency_code) = any($2::text[]))`,
+    [storeId, requiredCodes]
+  )
+
+  await pool.query(
+    `update ${schemaQ}.store_currency
+     set is_default = false, updated_at = now()
+     where store_id = $1 and deleted_at is null and lower(currency_code) <> $2`,
+    [storeId, defaultCode]
+  )
+
+  await pool.query(
+    `update ${schemaQ}.store_currency
+     set is_default = true, updated_at = now()
+     where store_id = $1 and deleted_at is null and lower(currency_code) = $2`,
+    [storeId, defaultCode]
+  )
+}
+
+export async function syncStoreCurrenciesFromRegionsForTenant(
+  schema: string
+): Promise<void> {
+  const schemaQ = quoteIdent(schema)
+  const stores = await getPlatformPool().query<{ id: string }>(
+    `select id from ${schemaQ}.store where deleted_at is null order by created_at asc limit 1`
+  )
+
+  const storeId = stores.rows[0]?.id
+  if (!storeId) {
+    return
+  }
+
+  await syncStoreCurrenciesFromRegions(schema, storeId)
+}
+
 /** @deprecated Usar buildProductPricingCurrencies con regiones del panel admin */
 export async function loadProductPricingCurrencies(
   schema: string,
