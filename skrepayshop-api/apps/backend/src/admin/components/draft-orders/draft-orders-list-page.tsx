@@ -1,4 +1,3 @@
-import { defineRouteConfig } from "@medusajs/admin-sdk"
 import {
   Button,
   Container,
@@ -10,7 +9,7 @@ import {
 } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, Outlet, useMatch, useNavigate } from "react-router-dom"
 import { adminFetch } from "../../lib/admin-api"
 
 type DraftOrderRow = {
@@ -48,9 +47,10 @@ function formatDraftDate(value?: string) {
   }
 }
 
-const DraftOrdersPage = () => {
+const DraftOrdersListPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const isCreateRoute = useMatch("/draft-orders/create")
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["draft-orders", "list"],
@@ -59,7 +59,12 @@ const DraftOrdersPage = () => {
         `/admin/draft-orders?limit=20&order=-created_at&fields=${encodeURIComponent(LIST_FIELDS)}`
       ),
     retry: 1,
+    enabled: !isCreateRoute,
   })
+
+  if (isCreateRoute) {
+    return <Outlet />
+  }
 
   const rows = data?.draft_orders ?? []
 
@@ -160,9 +165,4 @@ const DraftOrdersPage = () => {
   )
 }
 
-export const config = defineRouteConfig({
-  label: "Drafts",
-  nested: "/orders",
-})
-
-export default DraftOrdersPage
+export default DraftOrdersListPage

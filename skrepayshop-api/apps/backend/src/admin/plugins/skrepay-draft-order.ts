@@ -1,37 +1,32 @@
 import draftOrderPlugin from "@medusajs/draft-order/admin"
+import DraftOrdersListPage from "../components/draft-orders/draft-orders-list-page"
 
 type DraftOrderRoute = {
   path?: string
+  Component?: unknown
   children?: DraftOrderRoute[]
 }
 
 /**
- * El plugin oficial registra una lista rota en /draft-orders y un ítem "Drafts" duplicado.
- * Mantenemos solo create + detalle; la lista la sirve src/admin/routes/draft-orders/page.tsx.
+ * El listado oficial lanza en error de API/filtros (`if (isError) throw error`)
+ * y además pide customers/regions con throwOnError. Sustituimos solo ese componente.
  */
-const listRoute = draftOrderPlugin.routeModule.routes.find(
-  (route: DraftOrderRoute) => route.path === "/draft-orders"
-)
+const routes = draftOrderPlugin.routeModule.routes.map((route: DraftOrderRoute) => {
+  if (route.path !== "/draft-orders") {
+    return route
+  }
 
-const createRoute = listRoute?.children?.find(
-  (child: DraftOrderRoute) => child.path === "/draft-orders/create"
-)
-
-const routes = [
-  ...draftOrderPlugin.routeModule.routes.filter(
-    (route: DraftOrderRoute) => route.path !== "/draft-orders"
-  ),
-  ...(createRoute ? [createRoute] : []),
-]
+  return {
+    ...route,
+    Component: DraftOrdersListPage,
+  }
+})
 
 const plugin = {
   ...draftOrderPlugin,
   routeModule: {
     ...draftOrderPlugin.routeModule,
     routes,
-  },
-  menuItemModule: {
-    menuItems: [],
   },
 }
 
