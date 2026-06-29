@@ -205,7 +205,6 @@ export type CreateDraftOrderInput = {
 export type UpdateDraftOrderInput = {
   email?: string
   customer_id?: string
-  region_id?: string
   metadata?: Record<string, unknown>
 }
 
@@ -273,6 +272,10 @@ export async function updateDraftOrderItem(
   )
   await confirmDraftOrderEdit(draftId)
   return fetchDraftOrder(draftId)
+}
+
+export async function removeDraftOrderItem(draftId: string, itemId: string) {
+  return updateDraftOrderItem(draftId, itemId, { quantity: 0 })
 }
 
 export async function deleteDraftOrder(id: string) {

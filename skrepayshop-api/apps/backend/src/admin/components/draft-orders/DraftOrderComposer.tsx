@@ -28,6 +28,7 @@ import {
   getDraftItemLineTotal,
   getDraftItemQuantity,
   parseMoneyInput,
+  removeDraftOrderItem,
   resolveVariantUnitPrice,
   searchProductsForDraft,
   updateDraftOrder,
@@ -307,7 +308,6 @@ const DraftOrderComposer = ({
       return updateDraftOrder(id, {
         customer_id: customerId || undefined,
         email,
-        region_id: pendingRegionId || draft?.region?.id,
         metadata: {
           ...(draft?.metadata ?? {}),
           note: note.trim() || undefined,
@@ -422,6 +422,22 @@ const DraftOrderComposer = ({
     },
   })
 
+  const removeItemMutation = useMutation({
+    mutationFn: (itemId: string) => {
+      if (!draftId) {
+        throw new Error("Borrador no disponible")
+      }
+      return removeDraftOrderItem(draftId, itemId)
+    },
+    onSuccess: (data) => {
+      toast.success("Artículo eliminado")
+      applyDraftToCache(data)
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "No se pudo eliminar el artículo")
+    },
+  })
+
   const convertMutation = useMutation({
     mutationFn: async () => {
       const id = await ensureDraft()
@@ -516,11 +532,12 @@ const DraftOrderComposer = ({
   }
 
   const handleRegionChange = (regionId: string) => {
-    setPendingRegionId(regionId)
-
     if (draftId) {
-      metadataMutation.mutate()
+      toast.info("La región no se puede cambiar después de crear el borrador")
+      return
     }
+
+    setPendingRegionId(regionId)
   }
 
   const stubAction = (label: string) => {
@@ -671,7 +688,8 @@ const DraftOrderComposer = ({
                       size="small"
                       variant="transparent"
                       type="button"
-                      onClick={() => stubAction("Eliminar artículo")}
+                      isLoading={removeItemMutation.isPending}
+                      onClick={() => removeItemMutation.mutate(item.id)}
                     >
                       <XMark />
                     </IconButton>
@@ -792,8 +810,9 @@ const DraftOrderComposer = ({
           <SidebarPanel title="Región">
             <div className="flex flex-col gap-3">
               <Select
-                value={pendingRegionId || draft?.region?.id || regions[0]?.id}
+                value={draft?.region?.id ?? pendingRegionId ?? regions[0]?.id}
                 onValueChange={handleRegionChange}
+                disabled={Boolean(draftId)}
               >
                 <Select.Trigger>
                   <Select.Value placeholder="Seleccionar región" />
