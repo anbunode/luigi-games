@@ -859,3 +859,46 @@ export async function syncStoreSupportedCurrencies(
     throw error
   }
 }
+
+/**
+ * Habilita todas las monedas del catálogo en la tienda con impuestos incluidos apagados.
+ * La moneda por defecto actual de la tienda se conserva.
+ */
+export async function ensureAllStoreCurrenciesWithTaxExclusive(
+  schema: string,
+  storeId: string
+): Promise<void> {
+  const schemaQ = quoteIdent(schema)
+  const pool = getPlatformPool()
+
+  const catalog = await pool.query<{ code: string }>(
+    `select code from ${schemaQ}.currency where deleted_at is null order by code asc`
+  )
+
+  if (catalog.rows.length === 0) {
+    return
+  }
+
+  const defaultRow = await pool.query<{ currency_code: string }>(
+    `select lower(currency_code) as currency_code
+     from ${schemaQ}.store_currency
+     where store_id = $1 and deleted_at is null and is_default = true
+     limit 1`,
+    [storeId]
+  )
+
+  const defaultCode =
+    defaultRow.rows[0]?.currency_code ?? catalog.rows[0].code.toLowerCase()
+
+  const currencies: StoreCurrencyInput[] = catalog.rows.map((row) => ({
+    currency_code: row.code.toLowerCase(),
+    is_default: row.code.toLowerCase() === defaultCode,
+    is_tax_inclusive: false,
+  }))
+
+  if (!currencies.some((entry) => entry.is_default)) {
+    currencies[0].is_default = true
+  }
+
+  await syncStoreSupportedCurrencies(schema, storeId, currencies)
+}

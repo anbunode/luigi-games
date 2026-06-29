@@ -7,10 +7,10 @@ import { getAuthContextFromJwtToken } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, MedusaError, generateEntityId } from "@medusajs/framework/utils"
 import { getPlatformPool } from "./platform-db"
 import {
+  ensureAllStoreCurrenciesWithTaxExclusive,
   loadStoreEnabledCurrenciesForAdmin,
   loadMasterCurrencyCatalog,
   loadMasterCurrencyCatalogForAdmin,
-  syncStoreSupportedCurrencies,
   type StoreCurrencyInput,
 } from "./tenant-store-currencies"
 import {
@@ -233,6 +233,8 @@ export async function tenantAdminStoreByIdGetShim(
       return
     }
 
+    await ensureAllStoreCurrenciesWithTaxExclusive(schema, id)
+
     const [fullStore] = await attachSupportedCurrencies(schema, [store])
     res.json({ store: fullStore })
   } catch (error) {
@@ -319,11 +321,7 @@ export async function tenantAdminStoreByIdPostShim(
     }
 
     if (body.supported_currencies !== undefined) {
-      await syncStoreSupportedCurrencies(
-        schema,
-        id,
-        body.supported_currencies ?? []
-      )
+      await ensureAllStoreCurrenciesWithTaxExclusive(schema, id)
     }
 
     const updatedRows = await loadStoreRows(schema, id)
@@ -365,6 +363,10 @@ export async function tenantAdminStoresShim(
         limit: rows.length,
       })
       return
+    }
+
+    if (storeId) {
+      await ensureAllStoreCurrenciesWithTaxExclusive(schema, storeId)
     }
 
     const stores = await attachSupportedCurrencies(schema, rows)
