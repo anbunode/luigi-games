@@ -25,6 +25,8 @@ import {
   fetchRegionsForDraft,
   fetchStoreOrderTags,
   formatMoney,
+  getDraftItemLineTotal,
+  getDraftItemQuantity,
   parseMoneyInput,
   resolveVariantUnitPrice,
   searchProductsForDraft,
@@ -201,7 +203,10 @@ const DraftOrderComposer = ({
   const hasCustomers = (customerCountQuery.data?.count ?? 0) > 0
   const storeTags = tagsQuery.data ?? []
   const hasTags = storeTags.length > 0
-  const itemCount = items.reduce((sum, item) => sum + (item.quantity ?? 0), 0)
+  const itemCount = items.reduce(
+    (sum, item) => sum + getDraftItemQuantity(item),
+    0
+  )
 
   const taxRateLabel = useMemo(() => {
     const subtotal = draft?.subtotal ?? 0
@@ -342,6 +347,12 @@ const DraftOrderComposer = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note, selectedTags, customerId, guestEmail, payLater, pendingRegionId])
 
+  const applyDraftToCache = (data: Awaited<ReturnType<typeof fetchDraftOrder>>) => {
+    const id = data.draft_order.id
+    queryClient.setQueryData(["skrepay", "draft-orders", "detail", id], data)
+    setActiveDraftId(id)
+  }
+
   const addProductMutation = useMutation({
     mutationFn: async (input: {
       variant_id: string
@@ -355,10 +366,11 @@ const DraftOrderComposer = ({
       }
       return addDraftOrderItems(id, [input])
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success("Producto agregado")
       setProductModalOpen(false)
-      invalidate()
+      applyDraftToCache(data)
+      void queryClient.invalidateQueries({ queryKey: ["skrepay", "draft-orders", "list"] })
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : "No se pudo agregar el producto")
@@ -378,14 +390,15 @@ const DraftOrderComposer = ({
       }
       return addDraftOrderItems(id, [input])
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success("Artículo agregado")
       setCustomModalOpen(false)
       setCustomTitle("")
       setCustomPrice("")
       setCustomQuantity("1")
       setCustomWeight("")
-      invalidate()
+      applyDraftToCache(data)
+      void queryClient.invalidateQueries({ queryKey: ["skrepay", "draft-orders", "list"] })
     },
     onError: (error) => {
       toast.error(
@@ -401,7 +414,9 @@ const DraftOrderComposer = ({
       }
       return updateDraftOrderItem(draftId, input.itemId, { quantity: input.quantity })
     },
-    onSuccess: () => invalidate(),
+    onSuccess: (data) => {
+      applyDraftToCache(data)
+    },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : "No se pudo actualizar")
     },
@@ -463,7 +478,7 @@ const DraftOrderComposer = ({
   const handleAddCustom = (event: FormEvent) => {
     event.preventDefault()
 
-    const quantity = Number(customQuantity)
+    const quantity = Math.max(1, Math.trunc(Number(customQuantity)))
     const unitPrice = parseMoneyInput(customPrice)
 
     if (!customTitle.trim()) {
@@ -604,7 +619,11 @@ const DraftOrderComposer = ({
               </div>
             ) : (
               <div className="flex flex-col divide-y">
-                {items.map((item) => (
+                {items.map((item) => {
+                  const quantity = getDraftItemQuantity(item)
+                  const lineTotal = getDraftItemLineTotal(item)
+
+                  return (
                   <div
                     key={item.id}
                     className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0"
@@ -634,23 +653,19 @@ const DraftOrderComposer = ({
                       type="number"
                       min={1}
                       className="w-20"
-                      value={item.quantity ?? 1}
+                      value={quantity}
                       onChange={(event) => {
-                        const quantity = Number(event.target.value)
-                        if (quantity > 0 && draftId) {
+                        const nextQuantity = Number(event.target.value)
+                        if (nextQuantity > 0 && draftId) {
                           updateItemMutation.mutate({
                             itemId: item.id,
-                            quantity,
+                            quantity: nextQuantity,
                           })
                         }
                       }}
                     />
                     <Text weight="plus" className="min-w-[88px] text-right">
-                      {formatMoney(
-                        item.subtotal ??
-                          (item.unit_price ?? 0) * (item.quantity ?? 1),
-                        currency
-                      )}
+                      {formatMoney(lineTotal, currency)}
                     </Text>
                     <IconButton
                       size="small"
@@ -661,7 +676,8 @@ const DraftOrderComposer = ({
                       <XMark />
                     </IconButton>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </Panel>

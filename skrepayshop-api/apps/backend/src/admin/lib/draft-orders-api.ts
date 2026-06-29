@@ -6,9 +6,14 @@ export type DraftOrderItem = {
   quantity?: number
   unit_price?: number
   subtotal?: number
+  total?: number
   variant_id?: string
   metadata?: Record<string, unknown> | null
   thumbnail?: string | null
+  detail?: {
+    quantity?: number
+    unit_price?: number
+  } | null
 }
 
 export type DraftOrderRow = {
@@ -85,7 +90,7 @@ const LIST_FIELDS =
   "id,display_id,created_at,email,status,currency_code,total,+customer.email,+sales_channel.name,+region.name"
 
 const DETAIL_FIELDS =
-  "id,display_id,status,email,customer_id,created_at,updated_at,currency_code,total,subtotal,tax_total,shipping_total,discount_total,metadata,+region.id,+region.name,+region.currency_code,+sales_channel.id,+sales_channel.name,+customer.id,+customer.email,+customer.first_name,+customer.last_name,items.id,items.title,items.quantity,items.unit_price,items.subtotal,items.variant_id,items.metadata,items.thumbnail"
+  "id,display_id,status,email,customer_id,created_at,updated_at,currency_code,total,subtotal,tax_total,shipping_total,discount_total,metadata,summary,+region.id,+region.name,+region.currency_code,+sales_channel.id,+sales_channel.name,+customer.id,+customer.email,+customer.first_name,+customer.last_name,*items"
 
 export async function fetchDraftOrders(limit = 20) {
   return adminFetch<DraftOrdersListResponse>(
@@ -242,7 +247,7 @@ export async function confirmDraftOrderEdit(id: string) {
 
 export async function addDraftOrderItems(id: string, items: DraftLineItemInput[]) {
   await beginDraftOrderEdit(id)
-  const preview = await adminFetch<{ draft_order_preview: DraftOrderRow }>(
+  await adminFetch<{ draft_order_preview: DraftOrderRow }>(
     `/admin/draft-orders/${id}/edit/items`,
     {
       method: "POST",
@@ -250,7 +255,7 @@ export async function addDraftOrderItems(id: string, items: DraftLineItemInput[]
     }
   )
   await confirmDraftOrderEdit(id)
-  return preview
+  return fetchDraftOrder(id)
 }
 
 export async function updateDraftOrderItem(
@@ -259,7 +264,7 @@ export async function updateDraftOrderItem(
   input: { quantity: number; unit_price?: number }
 ) {
   await beginDraftOrderEdit(draftId)
-  const preview = await adminFetch<{ draft_order_preview: DraftOrderRow }>(
+  await adminFetch<{ draft_order_preview: DraftOrderRow }>(
     `/admin/draft-orders/${draftId}/edit/items/item/${itemId}`,
     {
       method: "POST",
@@ -267,7 +272,7 @@ export async function updateDraftOrderItem(
     }
   )
   await confirmDraftOrderEdit(draftId)
-  return preview
+  return fetchDraftOrder(draftId)
 }
 
 export async function deleteDraftOrder(id: string) {
@@ -352,4 +357,19 @@ export function parseMoneyInput(value: string) {
   const normalized = value.replace(",", ".").trim()
   const parsed = Number(normalized)
   return Number.isFinite(parsed) ? parsed : NaN
+}
+
+export function getDraftItemQuantity(item: DraftOrderItem) {
+  return item.quantity ?? item.detail?.quantity ?? 1
+}
+
+export function getDraftItemLineTotal(item: DraftOrderItem) {
+  if (item.subtotal != null) {
+    return item.subtotal
+  }
+
+  const quantity = getDraftItemQuantity(item)
+  const unitPrice = item.unit_price ?? item.detail?.unit_price ?? 0
+
+  return unitPrice * quantity
 }
