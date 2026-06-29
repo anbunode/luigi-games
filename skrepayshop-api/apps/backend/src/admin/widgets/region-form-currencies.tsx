@@ -2,6 +2,7 @@ import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { useQueryClient } from "@tanstack/react-query"
 import { useLayoutEffect } from "react"
 import { installAuthBridge } from "../lib/auth-bridge"
+import { registerRegionFormQueryClient } from "../lib/region-form-bridge"
 import {
   activateRegionFormCurrencyOverlay,
   deactivateRegionFormCurrencyOverlay,
@@ -20,6 +21,7 @@ const RegionFormCurrencies = () => {
 
   useLayoutEffect(() => {
     installAuthBridge()
+    registerRegionFormQueryClient(queryClient)
 
     const sync = () => {
       if (isRegionFormPage(window.location.pathname)) {

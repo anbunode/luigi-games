@@ -1,5 +1,6 @@
 import { getPlatformLoginUrl } from "./platform-url"
 import { installProductPricingBridge } from "./product-pricing-bridge"
+import { installRegionFormUiBridge } from "./region-form-bridge"
 import { formatRegionFormCurrencyOptions } from "./region-form-ui"
 import { isProductPricingPage, isRegionFormPage, notifyRouteChange } from "./region-routes"
 
@@ -251,4 +252,5 @@ export function installAuthBridge() {
   }) as History["replaceState"]
 
   installProductPricingBridge()
+  installRegionFormUiBridge()
 }

@@ -10,6 +10,7 @@ export function isRegionFormPage(pathname: string): boolean {
 
   return (
     /\/settings\/regions\/create\/?$/.test(path) ||
+    /\/settings\/regions\/[^/]+\/edit\/?$/.test(path) ||
     /\/settings\/regions\/[^/]+\/?$/.test(path)
   )
 }

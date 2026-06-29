@@ -1,9 +1,14 @@
+const BOOTSTRAP_IMPORT = 'import "../../src/admin/lib/admin-bootstrap"'
 const PLUGIN_IMPORT = 'import plugin0 from "@medusajs/draft-order/admin"'
 const PLUGINS_WITH_DRAFT = "<App plugins={[plugin0]} />"
 const PLUGINS_EMPTY = "<App />"
 
 export function patchAdminEntrySource(content: string): string {
   let patched = content
+
+  if (!patched.includes("admin-bootstrap")) {
+    patched = `${BOOTSTRAP_IMPORT}\n${patched}`
+  }
 
   patched = patched.split(PLUGIN_IMPORT).join("")
   patched = patched.replace(`${PLUGIN_IMPORT}\r\n`, "")
