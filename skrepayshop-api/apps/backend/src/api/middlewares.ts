@@ -44,6 +44,16 @@ export default defineMiddlewares({
       middlewares: [tenantRegionCountryPoolMiddleware, tenantRegionTaxSyncMiddleware],
     },
     {
+      method: "PUT",
+      matcher: "/admin/regions/:id",
+      middlewares: [tenantRegionCountryPoolMiddleware, tenantRegionTaxSyncMiddleware],
+    },
+    {
+      method: "PATCH",
+      matcher: "/admin/regions/:id",
+      middlewares: [tenantRegionCountryPoolMiddleware, tenantRegionTaxSyncMiddleware],
+    },
+    {
       method: "DELETE",
       matcher: "/admin/regions/:id",
       middlewares: [tenantRegionDeleteMiddleware],
