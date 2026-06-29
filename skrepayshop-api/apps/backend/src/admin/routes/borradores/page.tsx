@@ -1,14 +1,26 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
-import { Button, Container, Heading, Table, Text, Tooltip, TooltipProvider } from "@medusajs/ui"
+import {
+  Button,
+  Container,
+  Heading,
+  Table,
+  Text,
+  Tooltip,
+  TooltipProvider,
+} from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
-import { Link, useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
+import DraftOrderCreateForm from "../../components/orders/DraftOrderCreateForm"
+import DraftOrderEmptyState from "../../components/orders/DraftOrderEmptyState"
 import {
   fetchDraftOrders,
   formatDraftDate,
-} from "../../../lib/draft-orders-api"
+} from "../../lib/draft-orders-api"
 
-const DraftOrdersListPage = () => {
+const BorradoresPage = () => {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const showCreate = searchParams.get("crear") === "1"
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["skrepay", "draft-orders", "list"],
@@ -17,6 +29,8 @@ const DraftOrdersListPage = () => {
   })
 
   const rows = data?.draft_orders ?? []
+  const openCreate = () => setSearchParams({ crear: "1" })
+  const closeCreate = () => setSearchParams({})
 
   return (
     <TooltipProvider>
@@ -28,12 +42,20 @@ const DraftOrdersListPage = () => {
               Pedidos creados manualmente antes de convertirlos en orden real.
             </Text>
           </div>
-          <Button size="small" variant="secondary" asChild>
-            <Link to="create">Crear borrador</Link>
-          </Button>
+          {!showCreate ? (
+            <Button size="small" variant="secondary" onClick={openCreate}>
+              Crear pedido
+            </Button>
+          ) : (
+            <Button size="small" variant="secondary" onClick={closeCreate}>
+              Volver al listado
+            </Button>
+          )}
         </div>
 
-        {isLoading ? (
+        {showCreate ? (
+          <DraftOrderCreateForm onCancel={closeCreate} />
+        ) : isLoading ? (
           <div className="px-6 py-10">
             <Text className="text-ui-fg-subtle">Cargando borradores…</Text>
           </div>
@@ -50,14 +72,7 @@ const DraftOrdersListPage = () => {
             </Button>
           </div>
         ) : rows.length === 0 ? (
-          <div className="flex flex-col gap-2 px-6 py-10">
-            <Text size="large" weight="plus">
-              No hay borradores
-            </Text>
-            <Text className="text-ui-fg-subtle">
-              Crea un borrador para armar un pedido manual (teléfono, B2B, etc.).
-            </Text>
-          </div>
+          <DraftOrderEmptyState onCreateClick={openCreate} />
         ) : (
           <Table>
             <Table.Header>
@@ -77,7 +92,7 @@ const DraftOrdersListPage = () => {
                   <Table.Row
                     key={row.id}
                     className="cursor-pointer"
-                    onClick={() => navigate(`${row.id}`)}
+                    onClick={() => navigate(`/borradores/${row.id}`)}
                   >
                     <Table.Cell>#{row.display_id ?? "—"}</Table.Cell>
                     <Table.Cell>
@@ -111,4 +126,4 @@ export const config = defineRouteConfig({
   rank: 2,
 })
 
-export default DraftOrdersListPage
+export default BorradoresPage

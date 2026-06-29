@@ -7,9 +7,9 @@ import {
   fetchDraftOrder,
   formatDraftDate,
   formatMoney,
-} from "../../../../lib/draft-orders-api"
+} from "../../../lib/draft-orders-api"
 
-const DraftOrderDetailPage = () => {
+const BorradorDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -26,7 +26,7 @@ const DraftOrderDetailPage = () => {
     onSuccess: () => {
       toast.success("Borrador eliminado")
       void queryClient.invalidateQueries({ queryKey: ["skrepay", "draft-orders"] })
-      navigate("..")
+      navigate("/borradores")
     },
     onError: (mutationError) => {
       toast.error(
@@ -46,7 +46,7 @@ const DraftOrderDetailPage = () => {
       if (orderId) {
         navigate(`/orders/${orderId}`)
       } else {
-        navigate("..")
+        navigate("/borradores")
       }
     },
     onError: (mutationError) => {
@@ -66,9 +66,7 @@ const DraftOrderDetailPage = () => {
     <Container className="divide-y p-0">
       <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
         <div>
-          <Heading>
-            Borrador #{draft?.display_id ?? "—"}
-          </Heading>
+          <Heading>Borrador #{draft?.display_id ?? "—"}</Heading>
           <Text size="small" className="text-ui-fg-subtle">
             {draft?.email ?? "Sin email"}
             {createdAt.full ? ` · ${createdAt.full}` : ""}
@@ -76,7 +74,7 @@ const DraftOrderDetailPage = () => {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button size="small" variant="secondary" asChild>
-            <Link to="..">Volver</Link>
+            <Link to="/borradores">Volver</Link>
           </Button>
           <Button
             size="small"
@@ -109,9 +107,7 @@ const DraftOrderDetailPage = () => {
         </div>
       ) : isError ? (
         <div className="flex flex-col gap-3 px-6 py-10">
-          <Text className="text-ui-fg-error">
-            No se pudo cargar el borrador.
-          </Text>
+          <Text className="text-ui-fg-error">No se pudo cargar el borrador.</Text>
           <Text size="small" className="text-ui-fg-subtle">
             {error instanceof Error ? error.message : String(error)}
           </Text>
@@ -156,8 +152,7 @@ const DraftOrderDetailPage = () => {
             </Heading>
             {items.length === 0 ? (
               <Text className="text-ui-fg-subtle">
-                Este borrador aún no tiene productos. Puedes añadirlos desde la
-                API o ampliar esta pantalla más adelante.
+                Este borrador aún no tiene productos.
               </Text>
             ) : (
               <Table>
@@ -192,4 +187,4 @@ const DraftOrderDetailPage = () => {
   )
 }
 
-export default DraftOrderDetailPage
+export default BorradorDetailPage
