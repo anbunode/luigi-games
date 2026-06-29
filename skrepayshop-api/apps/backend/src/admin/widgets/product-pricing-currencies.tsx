@@ -2,57 +2,18 @@ import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { useQueryClient } from "@tanstack/react-query"
 import { useLayoutEffect } from "react"
 import { installAuthBridge } from "../lib/auth-bridge"
-import {
-  activateProductPricingCurrencyOverlay,
-  applyProductPricingUi,
-  deactivateProductPricingCurrencyOverlay,
-  getProductPricingDefaultCurrencyCode,
-} from "../lib/product-pricing-currency-overlay"
-import {
-  isProductPricingPage,
-  SKREPAY_ROUTE_CHANGE_EVENT,
-} from "../lib/region-routes"
+import { registerProductPricingQueryClient } from "../lib/product-pricing-bridge"
 
 /**
- * Precios de producto: moneda base (tienda) + columnas por región.
- * Oculta el resto de monedas de tienda que duplican regiones.
+ * Registra el query client para el puente global de precios de producto.
+ * La lógica vive en installProductPricingBridge() (auth-bridge).
  */
 const ProductPricingCurrencies = () => {
   const queryClient = useQueryClient()
 
   useLayoutEffect(() => {
     installAuthBridge()
-
-    const sync = () => {
-      if (isProductPricingPage(window.location.pathname)) {
-        void activateProductPricingCurrencyOverlay(queryClient)
-        return
-      }
-
-      deactivateProductPricingCurrencyOverlay(queryClient)
-    }
-
-    const onDomChange = () => {
-      if (!isProductPricingPage(window.location.pathname)) {
-        return
-      }
-
-      applyProductPricingUi(getProductPricingDefaultCurrencyCode())
-    }
-
-    sync()
-    window.addEventListener(SKREPAY_ROUTE_CHANGE_EVENT, sync)
-    window.addEventListener("popstate", sync)
-
-    const observer = new MutationObserver(onDomChange)
-    observer.observe(document.body, { childList: true, subtree: true })
-
-    return () => {
-      observer.disconnect()
-      window.removeEventListener(SKREPAY_ROUTE_CHANGE_EVENT, sync)
-      window.removeEventListener("popstate", sync)
-      deactivateProductPricingCurrencyOverlay(queryClient)
-    }
+    registerProductPricingQueryClient(queryClient)
   }, [queryClient])
 
   return null
@@ -63,7 +24,10 @@ export const config = defineWidgetConfig({
     "product.details.before",
     "product.details.after",
     "product.list.before",
+    "product.list.after",
     "order.list.before",
+    "customer.list.before",
+    "price_list.list.before",
   ],
 })
 

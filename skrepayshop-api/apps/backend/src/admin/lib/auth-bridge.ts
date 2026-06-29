@@ -1,5 +1,6 @@
 import { getPlatformLoginUrl } from "./platform-url"
-import { isRegionFormPage, notifyRouteChange } from "./region-routes"
+import { installProductPricingBridge } from "./product-pricing-bridge"
+import { isProductPricingPage, isRegionFormPage, notifyRouteChange } from "./region-routes"
 
 declare global {
   interface Window {
@@ -89,6 +90,70 @@ async function patchStoreListWithRegionCatalog(
   })
 }
 
+type StoreCurrencyRow = {
+  currency_code: string
+  is_default?: boolean
+}
+
+function reorderStoreCurrenciesDefaultFirst(
+  store: Record<string, unknown>
+): Record<string, unknown> {
+  const list = store.supported_currencies
+
+  if (!Array.isArray(list) || list.length < 2) {
+    return store
+  }
+
+  const currencies = list as StoreCurrencyRow[]
+  const reordered = [
+    ...currencies.filter((row) => row.is_default),
+    ...currencies.filter((row) => !row.is_default),
+  ]
+
+  return {
+    ...store,
+    supported_currencies: reordered,
+  }
+}
+
+async function patchStoreListForProductPricing(
+  response: Response
+): Promise<Response> {
+  if (!response.ok) {
+    return response
+  }
+
+  const storeBody = await response.json()
+  const patchStore = (store: Record<string, unknown>) =>
+    reorderStoreCurrenciesDefaultFirst(store)
+
+  const patched =
+    storeBody && typeof storeBody === "object"
+      ? {
+          ...(storeBody as Record<string, unknown>),
+          ...(Array.isArray((storeBody as { stores?: unknown[] }).stores)
+            ? {
+                stores: (storeBody as { stores: Record<string, unknown>[] }).stores.map(
+                  (store) => patchStore(store)
+                ),
+              }
+            : {}),
+          ...((storeBody as { store?: Record<string, unknown> }).store
+            ? {
+                store: patchStore(
+                  (storeBody as { store: Record<string, unknown> }).store
+                ),
+              }
+            : {}),
+        }
+      : storeBody
+
+  return new Response(JSON.stringify(patched), {
+    status: response.status,
+    headers: response.headers,
+  })
+}
+
 export function installAuthBridge() {
   if (typeof window === "undefined" || window.__skrepayAuthBridgeInstalled) {
     return
@@ -129,6 +194,14 @@ export function installAuthBridge() {
       }
       const response = await originalFetch(input, patchedInit)
       return patchStoreListWithRegionCatalog(response, originalFetch)
+    }
+
+    if (
+      isProductPricingPage(window.location.pathname) &&
+      isAdminStoresRequest(method, url)
+    ) {
+      const response = await originalFetch(input, init)
+      return patchStoreListForProductPricing(response)
     }
 
     const response = await originalFetch(input, init)
@@ -173,4 +246,6 @@ export function installAuthBridge() {
     notifyRouteChange()
     return result
   }) as History["replaceState"]
+
+  installProductPricingBridge()
 }

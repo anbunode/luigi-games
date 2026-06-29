@@ -90,3 +90,8 @@ export function isProductPricingCurrencyOverlayActive() {
 export function getProductPricingDefaultCurrencyCode() {
   return overlayDefaultCode
 }
+
+export function setProductPricingDefaultCurrencyCode(code: string) {
+  overlayDefaultCode = code.toLowerCase()
+  overlayActive = true
+}
