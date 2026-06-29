@@ -191,19 +191,35 @@ export async function syncTaxesForRegion(
           [existingRate.rows[0].id, taxPercent, rateName]
         )
       } else {
-        await pool.query(
-          `insert into ${schemaQ}.tax_rate
-             (id, rate, code, name, is_default, is_combinable, tax_region_id, created_at, updated_at)
-           values ($1, $2, $3, $4, true, false, $5, now(), now())`,
-          [
-            generateEntityId(undefined, "txrt"),
-            taxPercent,
-            rateCode,
-            rateName,
-            taxRegionId,
-          ]
+        const existingDefault = await pool.query<{ id: string }>(
+          `select id from ${schemaQ}.tax_rate
+           where deleted_at is null and tax_region_id = $1 and is_default = true
+           limit 1`,
+          [taxRegionId]
         )
-        taxRates++
+
+        if (existingDefault.rows[0]?.id) {
+          await pool.query(
+            `update ${schemaQ}.tax_rate
+             set rate = $2, code = $3, name = $4, is_default = true, updated_at = now()
+             where id = $1`,
+            [existingDefault.rows[0].id, taxPercent, rateCode, rateName]
+          )
+        } else {
+          await pool.query(
+            `insert into ${schemaQ}.tax_rate
+               (id, rate, code, name, is_default, is_combinable, tax_region_id, created_at, updated_at)
+             values ($1, $2, $3, $4, true, false, $5, now(), now())`,
+            [
+              generateEntityId(undefined, "txrt"),
+              taxPercent,
+              rateCode,
+              rateName,
+              taxRegionId,
+            ]
+          )
+          taxRates++
+        }
       }
     }
 
