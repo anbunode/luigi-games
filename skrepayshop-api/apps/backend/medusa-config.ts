@@ -1,4 +1,5 @@
 import { loadEnv, defineConfig } from "@medusajs/framework/utils"
+import { patchAdminEntryVitePlugin } from "./src/admin/lib/patch-admin-entry"
 
 loadEnv(process.env.NODE_ENV || "development", process.cwd())
 
@@ -25,6 +26,7 @@ module.exports = defineConfig({
           process.env.PLATFORM_URL || "https://skrepay.com"
         ),
       },
+      plugins: [patchAdminEntryVitePlugin()],
     }),
   },
 })

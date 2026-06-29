@@ -10,7 +10,7 @@ import {
 } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
-import { Link, Outlet, useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { adminFetch } from "../../lib/admin-api"
 
 type DraftOrderRow = {
@@ -94,12 +94,12 @@ const DraftOrdersPage = () => {
           </div>
         ) : rows.length === 0 ? (
           <div className="flex flex-col gap-2 px-6 py-10">
-            <Heading level="h2" className="txt-compact-small-plus">
+            <Text weight="plus" size="large">
               {t(
                 "draftOrders.list.noRecordsMessage",
                 "No draft orders found"
               )}
-            </Heading>
+            </Text>
             <Text className="text-ui-fg-subtle">
               {t(
                 "draftOrders.list.description",
@@ -156,7 +156,6 @@ const DraftOrdersPage = () => {
           </Table>
         )}
       </Container>
-      <Outlet />
     </TooltipProvider>
   )
 }
