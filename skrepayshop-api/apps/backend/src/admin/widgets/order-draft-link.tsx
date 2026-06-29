@@ -1,7 +1,7 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { Button, Text } from "@medusajs/ui"
 
-const DRAFT_ORDERS_HREF = "/app/draft-orders?crear=1"
+const DRAFT_ORDERS_HREF = "/app/draft-orders/create"
 
 /**
  * CTA seguro en Pedidos: enlace HTML nativo, sin react-router.

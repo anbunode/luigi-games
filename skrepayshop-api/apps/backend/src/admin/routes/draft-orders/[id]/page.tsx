@@ -8,7 +8,7 @@ const DraftOrderDetailPage = () => {
     return null
   }
 
-  return <DraftOrderComposer draftId={id} />
+  return <DraftOrderComposer draftId={id} mode="edit" />
 }
 
 export default DraftOrderDetailPage

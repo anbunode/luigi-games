@@ -3,6 +3,7 @@ import {
   Container,
   FocusModal,
   Heading,
+  IconButton,
   Input,
   Label,
   Select,
@@ -10,15 +11,18 @@ import {
   Textarea,
   toast,
 } from "@medusajs/ui"
+import { Plus, XMark } from "@medusajs/icons"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react"
+import { FormEvent, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import {
   addDraftOrderItems,
   convertDraftOrderToOrder,
+  createDraftOrder,
   customerLabel,
   deleteDraftOrder,
   fetchCustomersForDraft,
   fetchDraftOrder,
+  fetchRegionsForDraft,
   fetchStoreOrderTags,
   formatMoney,
   parseMoneyInput,
@@ -27,15 +31,47 @@ import {
   updateDraftOrder,
   updateDraftOrderItem,
   type CustomerOption,
-  type DraftOrderRow,
   type ProductOption,
+  type RegionOption,
 } from "../../lib/draft-orders-api"
 
-type DraftOrderComposerProps = {
-  draftId: string
+const PLACEHOLDER_EMAIL = "borrador@pendiente.local"
+
+function resolveDraftEmail(
+  customer: CustomerOption | undefined,
+  guestEmail: string
+) {
+  return customer?.email || guestEmail.trim() || PLACEHOLDER_EMAIL
 }
 
-function SidebarCard({
+type DraftOrderComposerProps = {
+  draftId?: string
+  mode?: "create" | "edit"
+}
+
+function Panel({
+  title,
+  action,
+  children,
+}: {
+  title: string
+  action?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <section className="bg-ui-bg-base overflow-hidden rounded-xl border shadow-borders-base">
+      <div className="flex items-center justify-between border-b px-4 py-3">
+        <Heading level="h2" className="text-base font-semibold">
+          {title}
+        </Heading>
+        {action}
+      </div>
+      <div className="p-4">{children}</div>
+    </section>
+  )
+}
+
+function SidebarPanel({
   title,
   children,
 }: {
@@ -43,21 +79,69 @@ function SidebarCard({
   children: ReactNode
 }) {
   return (
-    <div className="bg-ui-bg-base rounded-lg border p-4">
-      <Heading level="h3" className="mb-3 text-sm">
-        {title}
-      </Heading>
-      {children}
+    <section className="bg-ui-bg-base overflow-hidden rounded-xl border shadow-borders-base">
+      <div className="border-b px-4 py-3">
+        <Heading level="h3" className="text-sm font-semibold">
+          {title}
+        </Heading>
+      </div>
+      <div className="p-4">{children}</div>
+    </section>
+  )
+}
+
+function PaymentRow({
+  label,
+  hint,
+  value,
+  onClick,
+  bold,
+}: {
+  label: ReactNode
+  hint?: ReactNode
+  value: string
+  onClick?: () => void
+  bold?: boolean
+}) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-4 gap-y-1 py-1.5 text-sm">
+      <div className="min-w-0">
+        {onClick ? (
+          <button
+            type="button"
+            onClick={onClick}
+            className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover text-left"
+          >
+            {label}
+          </button>
+        ) : (
+          <Text className={bold ? "font-semibold" : "text-ui-fg-subtle"}>
+            {label}
+          </Text>
+        )}
+      </div>
+      <div className="text-ui-fg-muted text-right text-xs">{hint ?? "—"}</div>
+      <Text className={`text-right ${bold ? "font-semibold" : ""}`}>{value}</Text>
     </div>
   )
 }
 
-const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
+const DraftOrderComposer = ({
+  draftId: initialDraftId,
+  mode = "edit",
+}: DraftOrderComposerProps) => {
   const queryClient = useQueryClient()
+  const isCreateMode = mode === "create"
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(
+    initialDraftId ?? null
+  )
+  const [pendingRegionId, setPendingRegionId] = useState("")
   const [note, setNote] = useState("")
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [customerId, setCustomerId] = useState("")
   const [customerSearch, setCustomerSearch] = useState("")
+  const [guestEmail, setGuestEmail] = useState("")
+  const [payLater, setPayLater] = useState(false)
   const [productModalOpen, setProductModalOpen] = useState(false)
   const [customModalOpen, setCustomModalOpen] = useState(false)
   const [productQuery, setProductQuery] = useState("")
@@ -65,10 +149,19 @@ const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
   const [customPrice, setCustomPrice] = useState("")
   const [customQuantity, setCustomQuantity] = useState("1")
   const [customWeight, setCustomWeight] = useState("")
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const draftId = activeDraftId ?? initialDraftId
+
+  const regionsQuery = useQuery({
+    queryKey: ["skrepay", "draft-orders", "regions"],
+    queryFn: fetchRegionsForDraft,
+  })
 
   const draftQuery = useQuery({
     queryKey: ["skrepay", "draft-orders", "detail", draftId],
-    queryFn: () => fetchDraftOrder(draftId),
+    queryFn: () => fetchDraftOrder(draftId!),
+    enabled: Boolean(draftId),
     retry: 1,
   })
 
@@ -93,13 +186,42 @@ const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
     enabled: productModalOpen,
   })
 
+  const regions = regionsQuery.data ?? []
   const draft = draftQuery.data?.draft_order
-  const currency = draft?.currency_code ?? draft?.region?.currency_code ?? "EUR"
+  const selectedRegion =
+    regions.find((region) => region.id === (draft?.region?.id ?? pendingRegionId)) ??
+    regions[0]
+  const currency =
+    draft?.currency_code ??
+    draft?.region?.currency_code ??
+    selectedRegion?.currency_code ??
+    "EUR"
   const items = draft?.items ?? []
   const customers = customersQuery.data?.customers ?? []
   const hasCustomers = (customerCountQuery.data?.count ?? 0) > 0
   const storeTags = tagsQuery.data ?? []
   const hasTags = storeTags.length > 0
+  const itemCount = items.reduce((sum, item) => sum + (item.quantity ?? 0), 0)
+
+  const taxRateLabel = useMemo(() => {
+    const subtotal = draft?.subtotal ?? 0
+    const tax = draft?.tax_total ?? 0
+    if (!subtotal || !tax) {
+      return "Impuesto"
+    }
+    const pct = Math.round((tax / subtotal) * 100)
+    return `${pct}% IVA`
+  }, [draft?.subtotal, draft?.tax_total])
+
+  useEffect(() => {
+    if (!isCreateMode || draftId || regions.length === 0) {
+      return
+    }
+
+    if (!pendingRegionId) {
+      setPendingRegionId(regions[0].id)
+    }
+  }, [isCreateMode, draftId, regions, pendingRegionId])
 
   useEffect(() => {
     if (!draft) {
@@ -114,45 +236,125 @@ const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
         : []
     )
     setCustomerId(draft.customer_id ?? draft.customer?.id ?? "")
-  }, [draft?.id, draft?.metadata, draft?.customer_id, draft?.customer?.id])
+    setGuestEmail(draft.email ?? "")
+    setPayLater(metadata.pay_later === true)
+  }, [draft?.id, draft?.metadata, draft?.customer_id, draft?.customer?.id, draft?.email])
 
   const invalidate = () => {
+    if (!draftId) {
+      return
+    }
+
     void queryClient.invalidateQueries({
       queryKey: ["skrepay", "draft-orders", "detail", draftId],
     })
     void queryClient.invalidateQueries({ queryKey: ["skrepay", "draft-orders", "list"] })
   }
 
-  const metadataMutation = useMutation({
-    mutationFn: () => {
-      const selectedCustomer = customers.find((customer) => customer.id === customerId)
+  const createDraftMutation = useMutation({
+    mutationFn: (input: { region_id: string; email?: string; customer_id?: string }) =>
+      createDraftOrder(input),
+    onSuccess: (data) => {
+      const id = data.draft_order.id
+      setActiveDraftId(id)
+      if (isCreateMode) {
+        window.history.replaceState(null, "", `/app/draft-orders/${id}`)
+      }
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "No se pudo crear el borrador")
+    },
+  })
 
-      return updateDraftOrder(draftId, {
+  const ensureDraft = async () => {
+    if (draftId) {
+      return draftId
+    }
+
+    const regionId = pendingRegionId || regions[0]?.id
+    if (!regionId) {
+      toast.error("Configura al menos una región antes de crear pedidos")
+      return null
+    }
+
+    const selectedCustomer = customers.find((customer) => customer.id === customerId)
+    const email = resolveDraftEmail(selectedCustomer, guestEmail)
+
+    const result = await createDraftMutation.mutateAsync({
+      region_id: regionId,
+      email,
+      ...(customerId ? { customer_id: customerId } : {}),
+    })
+
+    return result.draft_order.id
+  }
+
+  const metadataMutation = useMutation({
+    mutationFn: async () => {
+      const id = await ensureDraft()
+      if (!id) {
+        throw new Error("No se pudo crear el borrador")
+      }
+
+      const selectedCustomer = customers.find((customer) => customer.id === customerId)
+      const email = resolveDraftEmail(selectedCustomer, guestEmail)
+
+      return updateDraftOrder(id, {
         customer_id: customerId || undefined,
-        email: selectedCustomer?.email ?? draft?.email,
+        email,
+        region_id: pendingRegionId || draft?.region?.id,
         metadata: {
           ...(draft?.metadata ?? {}),
           note: note.trim() || undefined,
           tags: selectedTags.length > 0 ? selectedTags : undefined,
+          pay_later: payLater || undefined,
         },
       })
     },
-    onSuccess: () => {
-      toast.success("Borrador actualizado")
-      invalidate()
-    },
+    onSuccess: () => invalidate(),
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : "No se pudo guardar")
     },
   })
 
+  const scheduleSave = () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+    }
+
+    saveTimerRef.current = setTimeout(() => {
+      metadataMutation.mutate()
+    }, 700)
+  }
+
+  useEffect(() => {
+    if (!draftId) {
+      return
+    }
+
+    scheduleSave()
+
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note, selectedTags, customerId, guestEmail, payLater, pendingRegionId])
+
   const addProductMutation = useMutation({
-    mutationFn: (input: {
+    mutationFn: async (input: {
       variant_id: string
       quantity: number
       unit_price: number
       title?: string
-    }) => addDraftOrderItems(draftId, [input]),
+    }) => {
+      const id = await ensureDraft()
+      if (!id) {
+        throw new Error("Selecciona una región")
+      }
+      return addDraftOrderItems(id, [input])
+    },
     onSuccess: () => {
       toast.success("Producto agregado")
       setProductModalOpen(false)
@@ -164,12 +366,18 @@ const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
   })
 
   const addCustomMutation = useMutation({
-    mutationFn: (input: {
+    mutationFn: async (input: {
       title: string
       quantity: number
       unit_price: number
       metadata?: Record<string, unknown>
-    }) => addDraftOrderItems(draftId, [input]),
+    }) => {
+      const id = await ensureDraft()
+      if (!id) {
+        throw new Error("Selecciona una región")
+      }
+      return addDraftOrderItems(id, [input])
+    },
     onSuccess: () => {
       toast.success("Artículo agregado")
       setCustomModalOpen(false)
@@ -187,8 +395,12 @@ const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
   })
 
   const updateItemMutation = useMutation({
-    mutationFn: (input: { itemId: string; quantity: number }) =>
-      updateDraftOrderItem(draftId, input.itemId, { quantity: input.quantity }),
+    mutationFn: (input: { itemId: string; quantity: number }) => {
+      if (!draftId) {
+        throw new Error("Borrador no disponible")
+      }
+      return updateDraftOrderItem(draftId, input.itemId, { quantity: input.quantity })
+    },
     onSuccess: () => invalidate(),
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : "No se pudo actualizar")
@@ -196,21 +408,34 @@ const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
   })
 
   const convertMutation = useMutation({
-    mutationFn: () => convertDraftOrderToOrder(draftId),
+    mutationFn: async () => {
+      const id = await ensureDraft()
+      if (!id) {
+        throw new Error("No se pudo crear el borrador")
+      }
+
+      await metadataMutation.mutateAsync()
+      return convertDraftOrderToOrder(id)
+    },
     onSuccess: (result) => {
-      toast.success("Borrador convertido en pedido")
+      toast.success("Pedido creado correctamente")
       const orderId = result.order?.id
       if (orderId) {
         window.location.assign(`/app/orders/${orderId}`)
       }
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "No se pudo convertir")
+      toast.error(error instanceof Error ? error.message : "No se pudo crear el pedido")
     },
   })
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteDraftOrder(draftId),
+    mutationFn: () => {
+      if (!draftId) {
+        throw new Error("Borrador no disponible")
+      }
+      return deleteDraftOrder(draftId)
+    },
     onSuccess: () => {
       toast.success("Borrador eliminado")
       window.location.assign("/app/draft-orders")
@@ -228,23 +453,12 @@ const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
 
     for (const product of productsQuery.data ?? []) {
       for (const variant of product.variants ?? []) {
-        rows.push({
-          product,
-          variant: {
-            ...variant,
-            product: { id: product.id, title: product.title, thumbnail: product.thumbnail },
-          },
-        })
+        rows.push({ product, variant })
       }
     }
 
     return rows
   }, [productsQuery.data])
-
-  const handleSaveMetadata = (event: FormEvent) => {
-    event.preventDefault()
-    metadataMutation.mutate()
-  }
 
   const handleAddCustom = (event: FormEvent) => {
     event.preventDefault()
@@ -286,15 +500,38 @@ const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
     )
   }
 
-  if (draftQuery.isLoading) {
+  const handleRegionChange = (regionId: string) => {
+    setPendingRegionId(regionId)
+
+    if (draftId) {
+      metadataMutation.mutate()
+    }
+  }
+
+  const stubAction = (label: string) => {
+    toast.info(`${label} estará disponible próximamente`)
+  }
+
+  if (regionsQuery.isLoading || (draftId && draftQuery.isLoading)) {
     return (
       <Container className="p-6">
-        <Text className="text-ui-fg-subtle">Cargando borrador…</Text>
+        <Text className="text-ui-fg-subtle">Cargando…</Text>
       </Container>
     )
   }
 
-  if (draftQuery.isError || !draft) {
+  if (regions.length === 0) {
+    return (
+      <Container className="p-6">
+        <Text className="text-ui-fg-error">
+          No hay regiones configuradas. Crea una región en Ajustes antes de crear
+          pedidos.
+        </Text>
+      </Container>
+    )
+  }
+
+  if (draftId && draftQuery.isError) {
     return (
       <Container className="p-6">
         <Text className="text-ui-fg-error">No se pudo cargar el borrador.</Text>
@@ -302,133 +539,182 @@ const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
     )
   }
 
+  const pageTitle = isCreateMode
+    ? "Crear pedido"
+    : `Borrador #${draft?.display_id ?? "—"}`
+
   return (
-    <div className="flex flex-col gap-4 p-6">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <Heading>Borrador #{draft.display_id ?? "—"}</Heading>
+          <Heading>{pageTitle}</Heading>
           <Text size="small" className="text-ui-fg-subtle">
-            {draft.region?.name ?? "Sin región"} · {currency.toUpperCase()}
+            {selectedRegion?.name ?? "Selecciona región"} · {currency.toUpperCase()}
           </Text>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button size="small" variant="secondary" asChild>
-            <a href="/app/draft-orders">Volver</a>
+            <a href="/app/draft-orders">Volver al listado</a>
           </Button>
-          <Button
-            size="small"
-            isLoading={convertMutation.isPending}
-            onClick={() => convertMutation.mutate()}
-          >
-            Convertir en pedido
-          </Button>
-          <Button
-            size="small"
-            variant="danger"
-            isLoading={deleteMutation.isPending}
-            onClick={() => {
-              if (window.confirm("¿Eliminar este borrador?")) {
-                deleteMutation.mutate()
-              }
-            }}
-          >
-            Eliminar
-          </Button>
+          {!isCreateMode && draftId ? (
+            <Button
+              size="small"
+              variant="danger"
+              isLoading={deleteMutation.isPending}
+              onClick={() => {
+                if (window.confirm("¿Eliminar este borrador?")) {
+                  deleteMutation.mutate()
+                }
+              }}
+            >
+              Eliminar
+            </Button>
+          ) : null}
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="flex flex-col gap-4">
-          <div className="bg-ui-bg-base rounded-lg border p-4">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <Heading level="h2">Productos</Heading>
-              <div className="flex flex-wrap gap-2">
+          <Panel
+            title="Productos"
+            action={
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   size="small"
                   variant="secondary"
                   onClick={() => setProductModalOpen(true)}
                 >
-                  Agregar un producto
+                  <Plus className="mr-1" />
+                  Agregar producto
                 </Button>
                 <Button
                   size="small"
                   variant="secondary"
                   onClick={() => setCustomModalOpen(true)}
                 >
-                  Agregar un artículo personalizado
+                  <Plus className="mr-1" />
+                  Agregar artículo personalizado
                 </Button>
               </div>
-            </div>
-
+            }
+          >
             {items.length === 0 ? (
-              <Text className="text-ui-fg-subtle">
-                Aún no hay productos en este borrador.
-              </Text>
+              <div className="text-ui-fg-subtle rounded-lg border border-dashed px-4 py-10 text-center text-sm">
+                Busca y agrega productos, o crea un artículo personalizado.
+              </div>
             ) : (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col divide-y">
                 {items.map((item) => (
                   <div
                     key={item.id}
-                    className="flex flex-wrap items-center justify-between gap-3 border-b pb-3 last:border-b-0 last:pb-0"
+                    className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0"
                   >
+                    <div className="bg-ui-bg-subtle flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border">
+                      {item.thumbnail ? (
+                        <img
+                          src={item.thumbnail}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Text size="small" className="text-ui-fg-muted">
+                          —
+                        </Text>
+                      )}
+                    </div>
                     <div className="min-w-0 flex-1">
-                      <Text weight="plus">{item.title ?? "Artículo"}</Text>
-                      <Text size="small" className="text-ui-fg-subtle">
-                        {formatMoney(item.unit_price, currency)} c/u
+                      <Text weight="plus" className="line-clamp-2">
+                        {item.title ?? "Artículo"}
+                      </Text>
+                      <Text size="small" className="text-ui-fg-interactive">
+                        {formatMoney(item.unit_price, currency)}
                       </Text>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={1}
-                        className="w-20"
-                        value={item.quantity ?? 1}
-                        onChange={(event) => {
-                          const quantity = Number(event.target.value)
-                          if (quantity > 0) {
-                            updateItemMutation.mutate({
-                              itemId: item.id,
-                              quantity,
-                            })
-                          }
-                        }}
-                      />
-                      <Text weight="plus" className="min-w-[80px] text-right">
-                        {formatMoney(item.subtotal ?? (item.unit_price ?? 0) * (item.quantity ?? 1), currency)}
-                      </Text>
-                    </div>
+                    <Input
+                      type="number"
+                      min={1}
+                      className="w-20"
+                      value={item.quantity ?? 1}
+                      onChange={(event) => {
+                        const quantity = Number(event.target.value)
+                        if (quantity > 0 && draftId) {
+                          updateItemMutation.mutate({
+                            itemId: item.id,
+                            quantity,
+                          })
+                        }
+                      }}
+                    />
+                    <Text weight="plus" className="min-w-[88px] text-right">
+                      {formatMoney(
+                        item.subtotal ??
+                          (item.unit_price ?? 0) * (item.quantity ?? 1),
+                        currency
+                      )}
+                    </Text>
+                    <IconButton
+                      size="small"
+                      variant="transparent"
+                      type="button"
+                      onClick={() => stubAction("Eliminar artículo")}
+                    >
+                      <XMark />
+                    </IconButton>
                   </div>
                 ))}
               </div>
             )}
-          </div>
+          </Panel>
 
-          <div className="bg-ui-bg-base rounded-lg border p-4">
-            <Heading level="h2" className="mb-4">
-              Pago
-            </Heading>
-            <div className="flex flex-col gap-2 text-sm">
-              <div className="flex justify-between">
-                <Text className="text-ui-fg-subtle">
-                  Subtotal · {items.length} artículo{items.length === 1 ? "" : "s"}
-                </Text>
-                <Text>{formatMoney(draft.subtotal, currency)}</Text>
-              </div>
-              <div className="flex justify-between">
-                <Text className="text-ui-fg-subtle">Envío</Text>
-                <Text>{formatMoney(draft.shipping_total, currency)}</Text>
-              </div>
-              <div className="flex justify-between">
-                <Text className="text-ui-fg-subtle">Impuesto estimado</Text>
-                <Text>{formatMoney(draft.tax_total, currency)}</Text>
-              </div>
-              <div className="flex justify-between border-t pt-2">
-                <Text weight="plus">Total</Text>
-                <Text weight="plus">{formatMoney(draft.total, currency)}</Text>
+          <Panel title="Pago">
+            <div className="flex flex-col">
+              <PaymentRow
+                label="Subtotal"
+                hint={`${itemCount} artículo${itemCount === 1 ? "" : "s"}`}
+                value={formatMoney(draft?.subtotal ?? 0, currency)}
+              />
+              <PaymentRow
+                label="Agregar descuento"
+                value={formatMoney(draft?.discount_total ?? 0, currency)}
+                onClick={() => stubAction("Agregar descuento")}
+              />
+              <PaymentRow
+                label="Agregar envío o entrega"
+                value={formatMoney(draft?.shipping_total ?? 0, currency)}
+                onClick={() => stubAction("Agregar envío")}
+              />
+              <PaymentRow
+                label="Impuesto estimado"
+                hint={taxRateLabel}
+                value={formatMoney(draft?.tax_total ?? 0, currency)}
+                onClick={() => stubAction("Impuesto estimado")}
+              />
+              <div className="mt-2 border-t pt-2">
+                <PaymentRow
+                  label="Total"
+                  value={formatMoney(draft?.total ?? 0, currency)}
+                  bold
+                />
               </div>
             </div>
+
+            <label className="mt-4 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={payLater}
+                onChange={(event) => setPayLater(event.target.checked)}
+                className="rounded border"
+              />
+              <span>Pago con vencimiento posterior</span>
+            </label>
+
             <div className="mt-4 flex justify-end gap-2">
-              <Button size="small" variant="secondary" type="button">
+              <Button
+                size="small"
+                variant="secondary"
+                type="button"
+                onClick={() => stubAction("Enviar factura")}
+              >
                 Enviar factura
               </Button>
               <Button
@@ -440,21 +726,22 @@ const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
                 Marcar como pagado
               </Button>
             </div>
-          </div>
+          </Panel>
         </div>
 
-        <form className="flex flex-col gap-4" onSubmit={handleSaveMetadata}>
-          <SidebarCard title="Notas">
+        <aside className="flex flex-col gap-4">
+          <SidebarPanel title="Notas">
             <Textarea
               value={note}
               onChange={(event) => setNote(event.target.value)}
               placeholder="Sin notas"
               rows={4}
+              className="resize-none"
             />
-          </SidebarCard>
+          </SidebarPanel>
 
           {hasCustomers ? (
-            <SidebarCard title="Cliente">
+            <SidebarPanel title="Cliente">
               <div className="flex flex-col gap-2">
                 <Input
                   value={customerSearch}
@@ -463,7 +750,13 @@ const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
                 />
                 <Select
                   value={customerId || undefined}
-                  onValueChange={setCustomerId}
+                  onValueChange={(value) => {
+                    setCustomerId(value)
+                    const selected = customers.find((customer) => customer.id === value)
+                    if (selected?.email) {
+                      setGuestEmail(selected.email)
+                    }
+                  }}
                 >
                   <Select.Trigger>
                     <Select.Value placeholder="Seleccionar cliente" />
@@ -477,18 +770,44 @@ const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
                   </Select.Content>
                 </Select>
               </div>
-            </SidebarCard>
+            </SidebarPanel>
           ) : null}
 
-          <SidebarCard title="Región">
-            <Text weight="plus">{draft.region?.name ?? "—"}</Text>
-            <Text size="small" className="text-ui-fg-subtle">
-              Moneda: {currency.toUpperCase()}
-            </Text>
-          </SidebarCard>
+          <SidebarPanel title="Región">
+            <div className="flex flex-col gap-3">
+              <Select
+                value={pendingRegionId || draft?.region?.id || regions[0]?.id}
+                onValueChange={handleRegionChange}
+              >
+                <Select.Trigger>
+                  <Select.Value placeholder="Seleccionar región" />
+                </Select.Trigger>
+                <Select.Content>
+                  {regions.map((region: RegionOption) => (
+                    <Select.Item key={region.id} value={region.id}>
+                      {region.name}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
+              <div className="flex flex-col gap-1">
+                <Label className="text-ui-fg-subtle text-xs">Moneda</Label>
+                <Select value={currency} disabled>
+                  <Select.Trigger>
+                    <Select.Value />
+                  </Select.Trigger>
+                  <Select.Content>
+                    <Select.Item value={currency}>
+                      {currency.toUpperCase()}
+                    </Select.Item>
+                  </Select.Content>
+                </Select>
+              </div>
+            </div>
+          </SidebarPanel>
 
           {hasTags ? (
-            <SidebarCard title="Etiquetas">
+            <SidebarPanel title="Etiquetas">
               <div className="flex flex-wrap gap-2">
                 {storeTags.map((tag) => {
                   const active = selectedTags.includes(tag)
@@ -497,10 +816,10 @@ const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
                       key={tag}
                       type="button"
                       onClick={() => toggleTag(tag)}
-                      className={`rounded-full border px-3 py-1 text-xs ${
+                      className={`rounded-full border px-3 py-1 text-xs transition-colors ${
                         active
                           ? "bg-ui-bg-interactive text-ui-fg-on-color border-ui-border-interactive"
-                          : "bg-ui-bg-subtle text-ui-fg-subtle"
+                          : "bg-ui-bg-subtle text-ui-fg-subtle hover:bg-ui-bg-subtle-hover"
                       }`}
                     >
                       {tag}
@@ -508,18 +827,20 @@ const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
                   )
                 })}
               </div>
-            </SidebarCard>
+            </SidebarPanel>
           ) : null}
 
-          <Button
-            type="submit"
-            size="small"
-            variant="secondary"
-            isLoading={metadataMutation.isPending}
-          >
-            Guardar cambios
-          </Button>
-        </form>
+          {!hasCustomers ? (
+            <SidebarPanel title="Email del cliente">
+              <Input
+                type="email"
+                value={guestEmail}
+                onChange={(event) => setGuestEmail(event.target.value)}
+                placeholder="cliente@ejemplo.com"
+              />
+            </SidebarPanel>
+          ) : null}
+        </aside>
       </div>
 
       <FocusModal open={productModalOpen} onOpenChange={setProductModalOpen}>
@@ -546,11 +867,11 @@ const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
                     <button
                       key={variant.id}
                       type="button"
-                      className="hover:bg-ui-bg-subtle-hover flex items-center justify-between rounded-md border px-3 py-2 text-left"
+                      className="hover:bg-ui-bg-subtle-hover flex items-center gap-3 rounded-md border px-3 py-2 text-left"
                       onClick={() => {
                         if (unitPrice == null) {
                           toast.error(
-                            "Este producto no tiene precio para la moneda de la región. Edítalo en Productos o usa un artículo personalizado."
+                            "Este producto no tiene precio para la moneda de la región."
                           )
                           return
                         }
@@ -563,7 +884,16 @@ const DraftOrderComposer = ({ draftId }: DraftOrderComposerProps) => {
                         })
                       }}
                     >
-                      <div>
+                      <div className="bg-ui-bg-subtle flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border">
+                        {product.thumbnail ? (
+                          <img
+                            src={product.thumbnail}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : null}
+                      </div>
+                      <div className="min-w-0 flex-1">
                         <Text weight="plus">{product.title}</Text>
                         <Text size="small" className="text-ui-fg-subtle">
                           {variant.title ?? "Variante"}

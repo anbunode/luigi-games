@@ -85,7 +85,7 @@ const LIST_FIELDS =
   "id,display_id,created_at,email,status,currency_code,total,+customer.email,+sales_channel.name,+region.name"
 
 const DETAIL_FIELDS =
-  "id,display_id,status,email,customer_id,created_at,updated_at,currency_code,total,subtotal,tax_total,shipping_total,discount_total,metadata,+region.id,+region.name,+region.currency_code,+sales_channel.id,+sales_channel.name,+customer.id,+customer.email,+customer.first_name,+customer.last_name,items.id,items.title,items.quantity,items.unit_price,items.subtotal,items.variant_id,items.metadata"
+  "id,display_id,status,email,customer_id,created_at,updated_at,currency_code,total,subtotal,tax_total,shipping_total,discount_total,metadata,+region.id,+region.name,+region.currency_code,+sales_channel.id,+sales_channel.name,+customer.id,+customer.email,+customer.first_name,+customer.last_name,items.id,items.title,items.quantity,items.unit_price,items.subtotal,items.variant_id,items.metadata,items.thumbnail"
 
 export async function fetchDraftOrders(limit = 20) {
   return adminFetch<DraftOrdersListResponse>(
@@ -135,6 +135,18 @@ export async function fetchCustomersForDraft(search = "") {
 
 export async function fetchStoreOrderTags() {
   const tags = new Set<string>()
+
+  const productTags = await adminFetch<{
+    product_tags?: Array<{ value?: string }>
+  }>("/admin/product-tags?limit=100&fields=id,value").catch(() => ({
+    product_tags: [],
+  }))
+
+  for (const tag of productTags.product_tags ?? []) {
+    if (tag.value?.trim()) {
+      tags.add(tag.value.trim())
+    }
+  }
 
   const [drafts, orders] = await Promise.all([
     adminFetch<DraftOrdersListResponse>(
@@ -188,6 +200,7 @@ export type CreateDraftOrderInput = {
 export type UpdateDraftOrderInput = {
   email?: string
   customer_id?: string
+  region_id?: string
   metadata?: Record<string, unknown>
 }
 
