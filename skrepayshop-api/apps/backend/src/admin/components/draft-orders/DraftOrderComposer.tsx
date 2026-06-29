@@ -24,6 +24,7 @@ import {
   fetchDraftOrder,
   fetchRegionsForDraft,
   fetchStoreOrderTags,
+  fetchStorePricingCurrencies,
   formatMoney,
   getDraftItemLineTotal,
   getDraftItemQuantity,
@@ -183,6 +184,11 @@ const DraftOrderComposer = ({
     queryFn: fetchStoreOrderTags,
   })
 
+  const storePricingQuery = useQuery({
+    queryKey: ["skrepay", "draft-orders", "store-pricing-currencies"],
+    queryFn: fetchStorePricingCurrencies,
+  })
+
   const productsQuery = useQuery({
     queryKey: ["skrepay", "draft-orders", "products", productQuery],
     queryFn: () => searchProductsForDraft(productQuery),
@@ -204,6 +210,17 @@ const DraftOrderComposer = ({
   const hasCustomers = (customerCountQuery.data?.count ?? 0) > 0
   const storeTags = tagsQuery.data ?? []
   const hasTags = storeTags.length > 0
+  const primaryCurrencyCode = storePricingQuery.data?.defaultCurrencyCode
+  const storeCurrencyCodes = storePricingQuery.data?.storeCurrencyCodes ?? []
+
+  const priceOptions = useMemo(
+    () => ({
+      primaryCurrencyCode,
+      regionCurrencyCode: currency,
+      storeCurrencyCodes,
+    }),
+    [primaryCurrencyCode, currency, storeCurrencyCodes]
+  )
   const itemCount = items.reduce(
     (sum, item) => sum + getDraftItemQuantity(item),
     0
@@ -896,7 +913,7 @@ const DraftOrderComposer = ({
             ) : (
               <div className="flex max-h-[420px] flex-col gap-2 overflow-y-auto">
                 {productRows.map(({ product, variant }) => {
-                  const unitPrice = resolveVariantUnitPrice(variant, currency)
+                  const resolvedPrice = resolveVariantUnitPrice(variant, priceOptions)
 
                   return (
                     <button
@@ -904,9 +921,9 @@ const DraftOrderComposer = ({
                       type="button"
                       className="hover:bg-ui-bg-subtle-hover flex items-center gap-3 rounded-md border px-3 py-2 text-left"
                       onClick={() => {
-                        if (unitPrice == null) {
+                        if (!resolvedPrice) {
                           toast.error(
-                            "Este producto no tiene precio para la moneda de la región."
+                            "Este producto no tiene precio en la moneda principal de la tienda ni en la región del borrador."
                           )
                           return
                         }
@@ -914,7 +931,7 @@ const DraftOrderComposer = ({
                         addProductMutation.mutate({
                           variant_id: variant.id,
                           quantity: 1,
-                          unit_price: unitPrice,
+                          unit_price: resolvedPrice.amount,
                           title: `${product.title}${variant.title ? ` · ${variant.title}` : ""}`,
                         })
                       }}
@@ -935,8 +952,11 @@ const DraftOrderComposer = ({
                         </Text>
                       </div>
                       <Text size="small">
-                        {unitPrice != null
-                          ? formatMoney(unitPrice, currency)
+                        {resolvedPrice
+                          ? formatMoney(
+                              resolvedPrice.amount,
+                              resolvedPrice.currency_code
+                            )
                           : "Sin precio"}
                       </Text>
                     </button>

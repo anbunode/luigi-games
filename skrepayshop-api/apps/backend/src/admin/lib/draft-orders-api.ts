@@ -179,8 +179,7 @@ export async function fetchStoreOrderTags() {
 export async function searchProductsForDraft(query = "") {
   const params = new URLSearchParams({
     limit: "20",
-    fields:
-      "id,title,thumbnail,*variants.id,*variants.title,*variants.sku,*variants.prices.amount,*variants.prices.currency_code",
+    fields: "id,title,thumbnail,*variants,+*variants.prices",
   })
 
   if (query.trim()) {
@@ -292,21 +291,86 @@ export async function convertDraftOrderToOrder(id: string) {
   )
 }
 
+export async function fetchStorePricingCurrencies() {
+  const data = await adminFetch<{
+    supported_currencies?: Array<{
+      currency_code: string
+      is_default?: boolean
+    }>
+  }>("/admin/skrepay/pricing-currencies")
+
+  const currencies = data.supported_currencies ?? []
+  const defaultCurrency =
+    currencies.find((row) => row.is_default)?.currency_code ??
+    currencies[0]?.currency_code
+
+  return {
+    defaultCurrencyCode: defaultCurrency?.toLowerCase(),
+    storeCurrencyCodes: currencies.map((row) => row.currency_code.toLowerCase()),
+  }
+}
+
+export type ResolvedVariantPrice = {
+  amount: number
+  currency_code: string
+}
+
 export function resolveVariantUnitPrice(
   variant: ProductVariantOption,
-  currencyCode?: string
-) {
-  const prices = variant.prices ?? []
+  options?: {
+    primaryCurrencyCode?: string
+    regionCurrencyCode?: string
+    storeCurrencyCodes?: string[]
+  }
+): ResolvedVariantPrice | undefined {
+  const prices = (variant.prices ?? []).filter(
+    (price) =>
+      price.amount != null &&
+      !Number.isNaN(price.amount) &&
+      typeof price.currency_code === "string" &&
+      price.currency_code.trim() !== ""
+  )
+
   if (prices.length === 0) {
     return undefined
   }
 
-  const code = currencyCode?.toLowerCase()
-  const match =
-    prices.find((price) => price.currency_code?.toLowerCase() === code) ??
-    prices[0]
+  const pick = (code?: string) => {
+    if (!code) {
+      return undefined
+    }
 
-  return match?.amount
+    return prices.find(
+      (price) => price.currency_code?.toLowerCase() === code.toLowerCase()
+    )
+  }
+
+  const toResolved = (
+    price: NonNullable<ReturnType<typeof pick>>
+  ): ResolvedVariantPrice => ({
+    amount: price.amount!,
+    currency_code: price.currency_code!.toLowerCase(),
+  })
+
+  const primary = pick(options?.primaryCurrencyCode)
+  if (primary) {
+    return toResolved(primary)
+  }
+
+  const region = pick(options?.regionCurrencyCode)
+  if (region) {
+    return toResolved(region)
+  }
+
+  for (const code of options?.storeCurrencyCodes ?? []) {
+    const matched = pick(code)
+    if (matched) {
+      return toResolved(matched)
+    }
+  }
+
+  const fallback = prices[0]
+  return fallback ? toResolved(fallback) : undefined
 }
 
 export function customerLabel(customer?: CustomerOption | DraftOrderRow["customer"]) {
