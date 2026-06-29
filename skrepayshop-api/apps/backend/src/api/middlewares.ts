@@ -7,6 +7,11 @@ import { tenantRegionTaxSyncMiddleware } from "../lib/tenant-region-tax-middlewa
 import { tenantRegionDeleteMiddleware } from "../lib/tenant-region-delete-middleware"
 import { tenantRegionCountryPoolMiddleware } from "../lib/tenant-region-country-pool-middleware"
 import {
+  tenantAdminPricePreferenceByIdDeleteShim,
+  tenantAdminPricePreferenceByIdGetShim,
+  tenantAdminPricePreferenceByIdPostShim,
+  tenantAdminPricePreferencesPostShim,
+  tenantAdminPricePreferencesShim,
   tenantAdminSalesChannelByIdGetShim,
   tenantAdminSalesChannelsShim,
   tenantAdminStoreByIdGetShim,
@@ -40,6 +45,31 @@ export default defineMiddlewares({
       method: "POST",
       matcher: "/admin/stores/:id",
       middlewares: [tenantAdminStoreByIdPostShim],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/price-preferences",
+      middlewares: [tenantAdminPricePreferencesShim],
+    },
+    {
+      method: "POST",
+      matcher: "/admin/price-preferences",
+      middlewares: [tenantAdminPricePreferencesPostShim],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/price-preferences/:id",
+      middlewares: [tenantAdminPricePreferenceByIdGetShim],
+    },
+    {
+      method: "POST",
+      matcher: "/admin/price-preferences/:id",
+      middlewares: [tenantAdminPricePreferenceByIdPostShim],
+    },
+    {
+      method: "DELETE",
+      matcher: "/admin/price-preferences/:id",
+      middlewares: [tenantAdminPricePreferenceByIdDeleteShim],
     },
     {
       method: "GET",

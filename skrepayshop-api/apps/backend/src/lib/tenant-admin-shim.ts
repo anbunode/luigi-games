@@ -4,7 +4,7 @@ import type {
   MedusaResponse,
 } from "@medusajs/framework/http"
 import { getAuthContextFromJwtToken } from "@medusajs/framework/http"
-import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, MedusaError, generateEntityId } from "@medusajs/framework/utils"
 import { getPlatformPool } from "./platform-db"
 import {
   loadStoreEnabledCurrenciesForAdmin,
@@ -480,6 +480,250 @@ export async function tenantAdminPricePreferencesShim(
       count: result.rows.length,
       offset: 0,
       limit: result.rows.length,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+type PricePreferenceRow = {
+  id: string
+  attribute: string
+  value: string
+  is_tax_inclusive: boolean
+  created_at: Date
+  updated_at: Date
+  deleted_at: Date | null
+}
+
+async function loadPricePreferenceRow(
+  schema: string,
+  id: string
+): Promise<PricePreferenceRow | null> {
+  const result = await getPlatformPool().query<PricePreferenceRow>(
+    `select id, attribute, value, is_tax_inclusive, created_at, updated_at, deleted_at
+     from ${quoteSchema(schema)}.price_preference
+     where id = $1 and deleted_at is null`,
+    [id]
+  )
+
+  return result.rows[0] ?? null
+}
+
+async function findPricePreferenceByAttributeValue(
+  schema: string,
+  attribute: string,
+  value: string
+): Promise<PricePreferenceRow | null> {
+  const result = await getPlatformPool().query<PricePreferenceRow>(
+    `select id, attribute, value, is_tax_inclusive, created_at, updated_at, deleted_at
+     from ${quoteSchema(schema)}.price_preference
+     where attribute = $1 and lower(value) = lower($2) and deleted_at is null
+     limit 1`,
+    [attribute, value]
+  )
+
+  return result.rows[0] ?? null
+}
+
+export async function tenantAdminPricePreferenceByIdGetShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveRequestSchema(req)
+    if (!schema) {
+      next()
+      return
+    }
+
+    const id = req.params.id
+    if (!id) {
+      next()
+      return
+    }
+
+    const price_preference = await loadPricePreferenceRow(schema, id)
+
+    if (!price_preference) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `Price preference with id: ${id} was not found`
+      )
+    }
+
+    res.json({ price_preference })
+  } catch (error) {
+    next(error)
+  }
+}
+
+type PricePreferenceCreateBody = {
+  attribute?: string
+  value?: string
+  is_tax_inclusive?: boolean
+}
+
+type PricePreferenceUpdateBody = {
+  attribute?: string
+  value?: string
+  is_tax_inclusive?: boolean
+}
+
+export async function tenantAdminPricePreferencesPostShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveRequestSchema(req)
+    if (!schema) {
+      next()
+      return
+    }
+
+    const body = req.body as PricePreferenceCreateBody
+    const attribute = body.attribute
+    const value = body.value
+
+    if (!attribute || !value) {
+      next()
+      return
+    }
+
+    const existing = await findPricePreferenceByAttributeValue(
+      schema,
+      attribute,
+      value
+    )
+
+    if (existing) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        `Price preference with attribute: ${attribute}, value: ${value}, already exists.`
+      )
+    }
+
+    const schemaQ = quoteSchema(schema)
+    const id = generateEntityId(undefined, "ppref")
+
+    await getPlatformPool().query(
+      `insert into ${schemaQ}.price_preference
+         (id, attribute, value, is_tax_inclusive, created_at, updated_at)
+       values ($1, $2, $3, $4, now(), now())`,
+      [id, attribute, value, body.is_tax_inclusive ?? false]
+    )
+
+    const price_preference = await loadPricePreferenceRow(schema, id)
+    res.json({ price_preference })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function tenantAdminPricePreferenceByIdPostShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveRequestSchema(req)
+    if (!schema) {
+      next()
+      return
+    }
+
+    const id = req.params.id
+    if (!id) {
+      next()
+      return
+    }
+
+    const existing = await loadPricePreferenceRow(schema, id)
+
+    if (!existing) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `Price preference with id: ${id} was not found`
+      )
+    }
+
+    const body = req.body as PricePreferenceUpdateBody
+    const schemaQ = quoteSchema(schema)
+    const updates: string[] = []
+    const values: unknown[] = []
+
+    if (body.attribute !== undefined) {
+      values.push(body.attribute)
+      updates.push(`attribute = $${values.length}`)
+    }
+
+    if (body.value !== undefined) {
+      values.push(body.value)
+      updates.push(`value = $${values.length}`)
+    }
+
+    if (body.is_tax_inclusive !== undefined) {
+      values.push(body.is_tax_inclusive)
+      updates.push(`is_tax_inclusive = $${values.length}`)
+    }
+
+    if (updates.length > 0) {
+      values.push(id)
+      await getPlatformPool().query(
+        `update ${schemaQ}.price_preference
+         set ${updates.join(", ")}, updated_at = now()
+         where id = $${values.length} and deleted_at is null`,
+        values
+      )
+    }
+
+    const price_preference = await loadPricePreferenceRow(schema, id)
+    res.json({ price_preference })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function tenantAdminPricePreferenceByIdDeleteShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveRequestSchema(req)
+    if (!schema) {
+      next()
+      return
+    }
+
+    const id = req.params.id
+    if (!id) {
+      next()
+      return
+    }
+
+    const existing = await loadPricePreferenceRow(schema, id)
+
+    if (!existing) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `Price preference with id: ${id} was not found`
+      )
+    }
+
+    await getPlatformPool().query(
+      `update ${quoteSchema(schema)}.price_preference
+       set deleted_at = now(), updated_at = now()
+       where id = $1 and deleted_at is null`,
+      [id]
+    )
+
+    res.json({
+      id,
+      object: "price_preference",
+      deleted: true,
     })
   } catch (error) {
     next(error)
