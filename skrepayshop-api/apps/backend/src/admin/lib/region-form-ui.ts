@@ -7,6 +7,44 @@ const REGION_TAX_INCLUSIVE_LABELS = [
   "tax inclusive pricing",
 ]
 
+const REGION_FORM_CURRENCY_STYLES = `
+  body[data-skrepay-region-form] #form-section [role="option"][data-value] {
+    position: relative;
+  }
+
+  body[data-skrepay-region-form] #form-section [role="option"][data-value] span:last-child {
+    opacity: 0 !important;
+  }
+
+  body[data-skrepay-region-form] #form-section [role="option"][data-value]::after {
+    content: attr(data-value);
+    position: absolute;
+    left: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    text-transform: uppercase;
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+    pointer-events: none;
+  }
+`
+
+function ensureRegionFormCurrencyStyles() {
+  if (typeof document === "undefined") {
+    return
+  }
+
+  const id = "skrepay-region-form-currency-styles"
+  if (document.getElementById(id)) {
+    return
+  }
+
+  const style = document.createElement("style")
+  style.id = id
+  style.textContent = REGION_FORM_CURRENCY_STYLES
+  document.head.appendChild(style)
+}
+
 const CURRENCY_FIELD_LABELS = ["moneda", "currency"]
 
 function matchesLabel(text: string, labels: string[]): boolean {
@@ -111,6 +149,8 @@ function patchCurrencyComboboxValue(root: ParentNode, combo: HTMLElement) {
 }
 
 export function patchRegionFormCurrencySelectLabels(root: ParentNode = document) {
+  ensureRegionFormCurrencyStyles()
+
   root.querySelectorAll('[role="option"]').forEach((node) => {
     if (!(node instanceof HTMLElement)) {
       return
