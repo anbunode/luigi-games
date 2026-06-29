@@ -9,6 +9,7 @@ import { getPlatformPool } from "./platform-db"
 import {
   loadStoreEnabledCurrenciesForAdmin,
   loadMasterCurrencyCatalog,
+  loadMasterCurrencyCatalogForAdmin,
   syncStoreCurrenciesFromRegions,
   syncStoreCurrenciesFromRegionsForTenant,
   syncStoreSupportedCurrencies,
@@ -27,6 +28,21 @@ type ScopedRequest = MedusaRequest & {
 
 function quoteSchema(schema: string): string {
   return `"${schema.replace(/"/g, '""')}"`
+}
+
+function isRegionFormAdminRequest(req: MedusaRequest): boolean {
+  const header = req.headers["x-skrepay-region-form"]
+  if (header === "1" || header === "true") {
+    return true
+  }
+
+  const referer = typeof req.headers.referer === "string" ? req.headers.referer : ""
+  const path = referer.replace(/^https?:\/\/[^/]+/i, "")
+
+  return (
+    /\/app\/settings\/regions\/(create|reg_[^/]+)\/?$/i.test(path) ||
+    /\/settings\/regions\/(create|reg_[^/]+)\/?$/i.test(path)
+  )
 }
 
 async function resolveRequestSchema(req: MedusaRequest): Promise<string | null> {
@@ -204,6 +220,21 @@ export async function tenantAdminStoreByIdGetShim(
       )
     }
 
+    if (isRegionFormAdminRequest(req)) {
+      const supported_currencies = await loadMasterCurrencyCatalogForAdmin(
+        schema,
+        id
+      )
+
+      res.json({
+        store: {
+          ...store,
+          supported_currencies,
+        },
+      })
+      return
+    }
+
     const [fullStore] = await attachSupportedCurrencies(schema, [store])
     res.json({ store: fullStore })
   } catch (error) {
@@ -318,9 +349,29 @@ export async function tenantAdminStoresShim(
       return
     }
 
+    const rows = await loadStoreRows(schema)
+    const storeId = rows[0]?.id
+
+    if (isRegionFormAdminRequest(req) && storeId) {
+      const supported_currencies = await loadMasterCurrencyCatalogForAdmin(
+        schema,
+        storeId
+      )
+
+      res.json({
+        stores: rows.map((row) => ({
+          ...row,
+          supported_currencies,
+        })),
+        count: rows.length,
+        offset: 0,
+        limit: rows.length,
+      })
+      return
+    }
+
     await syncStoreCurrenciesFromRegionsForTenant(schema)
 
-    const rows = await loadStoreRows(schema)
     const stores = await attachSupportedCurrencies(schema, rows)
 
     res.json({

@@ -1,5 +1,6 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { useLayoutEffect } from "react"
+import { installAuthBridge } from "../lib/auth-bridge"
 import {
   isStoreCurrencyManagementPage,
   SKREPAY_ROUTE_CHANGE_EVENT,
@@ -32,6 +33,8 @@ function syncStoreCurrencyGovernance() {
  */
 const RegionGovernedStoreCurrencies = () => {
   useLayoutEffect(() => {
+    installAuthBridge()
+
     syncStoreCurrencyGovernance()
 
     const observer = new MutationObserver(() => {

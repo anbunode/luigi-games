@@ -1,5 +1,5 @@
 import { getPlatformLoginUrl } from "./platform-url"
-import { notifyRouteChange } from "./region-routes"
+import { isRegionFormPage, notifyRouteChange } from "./region-routes"
 
 declare global {
   interface Window {
@@ -9,6 +9,84 @@ declare global {
 
 function getLogoutUrl() {
   return `${window.location.origin}/skrepay/logout`
+}
+
+function isAdminStoresRequest(method: string, url: string): boolean {
+  if (method !== "GET") {
+    return false
+  }
+
+  try {
+    const parsed = new URL(url, window.location.origin)
+    return /^\/admin\/stores\/?$/.test(parsed.pathname)
+  } catch {
+    return url.includes("/admin/stores") && !url.includes("/admin/stores/")
+  }
+}
+
+async function patchStoreListWithRegionCatalog(
+  response: Response,
+  originalFetch: typeof fetch
+): Promise<Response> {
+  if (!response.ok) {
+    return response
+  }
+
+  const catalogResponse = await originalFetch(
+    `/admin/skrepay/region-currencies?_ts=${Date.now()}`,
+    {
+      credentials: "include",
+      cache: "no-store",
+    }
+  )
+
+  if (!catalogResponse.ok) {
+    return response
+  }
+
+  const [storeBody, catalogBody] = await Promise.all([
+    response.json(),
+    catalogResponse.json(),
+  ])
+
+  const catalog = catalogBody.supported_currencies
+  if (!Array.isArray(catalog) || catalog.length === 0) {
+    return new Response(JSON.stringify(storeBody), {
+      status: response.status,
+      headers: response.headers,
+    })
+  }
+
+  const patchStore = (store: Record<string, unknown>) => ({
+    ...store,
+    supported_currencies: catalog,
+  })
+
+  const patched =
+    storeBody && typeof storeBody === "object"
+      ? {
+          ...(storeBody as Record<string, unknown>),
+          ...(Array.isArray((storeBody as { stores?: unknown[] }).stores)
+            ? {
+                stores: (storeBody as { stores: Record<string, unknown>[] }).stores.map(
+                  (store) => patchStore(store)
+                ),
+              }
+            : {}),
+          ...((storeBody as { store?: Record<string, unknown> }).store
+            ? {
+                store: patchStore(
+                  (storeBody as { store: Record<string, unknown> }).store
+                ),
+              }
+            : {}),
+        }
+      : storeBody
+
+  return new Response(JSON.stringify(patched), {
+    status: response.status,
+    headers: response.headers,
+  })
 }
 
 export function installAuthBridge() {
@@ -37,6 +115,20 @@ export function installAuthBridge() {
         status: 200,
         headers: { "Content-Type": "application/json" },
       })
+    }
+
+    if (
+      isRegionFormPage(window.location.pathname) &&
+      isAdminStoresRequest(method, url)
+    ) {
+      const headers = new Headers(init?.headers)
+      headers.set("x-skrepay-region-form", "1")
+      const patchedInit = {
+        ...init,
+        headers,
+      }
+      const response = await originalFetch(input, patchedInit)
+      return patchStoreListWithRegionCatalog(response, originalFetch)
     }
 
     const response = await originalFetch(input, init)

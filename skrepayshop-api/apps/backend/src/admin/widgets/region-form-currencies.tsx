@@ -1,9 +1,11 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { useQueryClient } from "@tanstack/react-query"
 import { useLayoutEffect } from "react"
+import { installAuthBridge } from "../lib/auth-bridge"
 import {
   activateRegionFormCurrencyOverlay,
   deactivateRegionFormCurrencyOverlay,
+  isStoreQueryKey,
 } from "../lib/region-form-currency-overlay"
 import {
   isRegionFormPage,
@@ -18,8 +20,13 @@ const RegionFormCurrencies = () => {
   const queryClient = useQueryClient()
 
   useLayoutEffect(() => {
+    installAuthBridge()
+
     const sync = () => {
       if (isRegionFormPage(window.location.pathname)) {
+        void queryClient.invalidateQueries({
+          predicate: (query) => isStoreQueryKey(query.queryKey),
+        })
         void activateRegionFormCurrencyOverlay(queryClient)
         return
       }
@@ -34,7 +41,9 @@ const RegionFormCurrencies = () => {
     return () => {
       window.removeEventListener(SKREPAY_ROUTE_CHANGE_EVENT, sync)
       window.removeEventListener("popstate", sync)
-      deactivateRegionFormCurrencyOverlay(queryClient)
+      if (!isRegionFormPage(window.location.pathname)) {
+        deactivateRegionFormCurrencyOverlay(queryClient)
+      }
     }
   }, [queryClient])
 
@@ -47,6 +56,8 @@ export const config = defineWidgetConfig({
     "region.details.after",
     "region.list.before",
     "order.list.before",
+    "product.list.before",
+    "store.details.before",
   ],
 })
 

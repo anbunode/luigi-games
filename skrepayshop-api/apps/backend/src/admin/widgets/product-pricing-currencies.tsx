@@ -1,6 +1,7 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { useQueryClient } from "@tanstack/react-query"
 import { useLayoutEffect } from "react"
+import { installAuthBridge } from "../lib/auth-bridge"
 import {
   activateProductPricingCurrencyOverlay,
   deactivateProductPricingCurrencyOverlay,
@@ -17,6 +18,8 @@ const ProductPricingCurrencies = () => {
   const queryClient = useQueryClient()
 
   useLayoutEffect(() => {
+    installAuthBridge()
+
     const sync = () => {
       if (isProductPricingPage(window.location.pathname)) {
         void activateProductPricingCurrencyOverlay(queryClient)
