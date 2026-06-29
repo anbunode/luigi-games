@@ -1,6 +1,6 @@
 import { Button, Container, Heading, Table, Text, toast } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Link, useNavigate, useParams } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 import {
   convertDraftOrderToOrder,
   deleteDraftOrder,
@@ -9,7 +9,7 @@ import {
   formatMoney,
 } from "../../../lib/draft-orders-api"
 
-const BorradorDetailPage = () => {
+const DraftOrderDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -26,7 +26,7 @@ const BorradorDetailPage = () => {
     onSuccess: () => {
       toast.success("Borrador eliminado")
       void queryClient.invalidateQueries({ queryKey: ["skrepay", "draft-orders"] })
-      navigate("/borradores")
+      navigate("/draft-orders")
     },
     onError: (mutationError) => {
       toast.error(
@@ -46,7 +46,7 @@ const BorradorDetailPage = () => {
       if (orderId) {
         navigate(`/orders/${orderId}`)
       } else {
-        navigate("/borradores")
+        navigate("/draft-orders")
       }
     },
     onError: (mutationError) => {
@@ -73,8 +73,12 @@ const BorradorDetailPage = () => {
           </Text>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button size="small" variant="secondary" asChild>
-            <Link to="/borradores">Volver</Link>
+          <Button
+            size="small"
+            variant="secondary"
+            onClick={() => navigate("/draft-orders")}
+          >
+            Volver
           </Button>
           <Button
             size="small"
@@ -187,4 +191,4 @@ const BorradorDetailPage = () => {
   )
 }
 
-export default BorradorDetailPage
+export default DraftOrderDetailPage
