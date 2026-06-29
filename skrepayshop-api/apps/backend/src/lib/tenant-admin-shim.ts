@@ -288,11 +288,11 @@ export async function tenantAdminStoreByIdPostShim(
     }
 
     if (body.supported_currencies !== undefined) {
-      await syncStoreSupportedCurrencies(
-        schema,
-        id,
-        body.supported_currencies ?? []
+      const currencies = (body.supported_currencies ?? []).map(
+        ({ is_tax_inclusive: _ignored, ...currency }) => currency
       )
+
+      await syncStoreSupportedCurrencies(schema, id, currencies)
     }
 
     const updatedRows = await loadStoreRows(schema, id)

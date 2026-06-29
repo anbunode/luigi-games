@@ -18,6 +18,16 @@ export function isStoreSettingsPage(pathname: string): boolean {
   return /\/settings\/store\/?$/.test(normalizeAdminPathname(pathname))
 }
 
+/** Tienda → monedas (listado y modal agregar) */
+export function isStoreCurrencyManagementPage(pathname: string): boolean {
+  const path = normalizeAdminPathname(pathname)
+
+  return (
+    /\/settings\/store\/?$/.test(path) ||
+    /\/settings\/store\/currencies\/?$/.test(path)
+  )
+}
+
 export function notifyRouteChange() {
   window.dispatchEvent(new Event(SKREPAY_ROUTE_CHANGE_EVENT))
 }
