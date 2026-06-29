@@ -13,8 +13,7 @@ import {
 } from "../lib/region-routes"
 
 /**
- * Solo crear/editar región: inyecta el catálogo completo en el selector de moneda.
- * No toca /admin/stores; al salir restaura la caché original de la tienda.
+ * Crear/editar región: monedas habilitadas en la tienda, mostradas por código.
  */
 const RegionFormCurrencies = () => {
   const queryClient = useQueryClient()

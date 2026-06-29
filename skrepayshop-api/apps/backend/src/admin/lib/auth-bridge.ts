@@ -1,5 +1,6 @@
 import { getPlatformLoginUrl } from "./platform-url"
 import { installProductPricingBridge } from "./product-pricing-bridge"
+import { formatRegionFormCurrencyOptions } from "./region-form-ui"
 import { isProductPricingPage, isRegionFormPage, notifyRouteChange } from "./region-routes"
 
 declare global {
@@ -58,9 +59,11 @@ async function patchStoreListWithRegionCatalog(
     })
   }
 
+  const formattedCatalog = formatRegionFormCurrencyOptions(catalog)
+
   const patchStore = (store: Record<string, unknown>) => ({
     ...store,
-    supported_currencies: catalog,
+    supported_currencies: formattedCatalog,
   })
 
   const patched =

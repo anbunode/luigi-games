@@ -8,7 +8,7 @@ import {
   resolveTenantSchema,
 } from "../../../../lib/tenant-db-scope"
 import { getPlatformPool } from "../../../../lib/platform-db"
-import { loadMasterCurrencyCatalogForAdmin } from "../../../../lib/tenant-store-currencies"
+import { formatStoreCurrenciesForRegionForm, ensureAllStoreCurrenciesWithTaxExclusive, loadStoreEnabledCurrenciesForAdmin } from "../../../../lib/tenant-store-currencies"
 
 type ScopedRequest = MedusaRequest & {
   skrepayTenantSchema?: string
@@ -36,8 +36,7 @@ async function resolveRequestSchema(req: MedusaRequest): Promise<string | null> 
 
 /**
  * GET /admin/skrepay/region-currencies
- * Catálogo completo solo para el formulario de crear/editar región.
- * No modifica /admin/stores ni la configuración de monedas de la tienda.
+ * Monedas habilitadas en la tienda para el formulario de crear/editar región.
  */
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const schema = await resolveRequestSchema(req)
@@ -60,9 +59,10 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
-  const supported_currencies = await loadMasterCurrencyCatalogForAdmin(
-    schema,
-    storeId
+  await ensureAllStoreCurrenciesWithTaxExclusive(schema, storeId)
+
+  const supported_currencies = formatStoreCurrenciesForRegionForm(
+    await loadStoreEnabledCurrenciesForAdmin(schema, storeId)
   )
 
   res.json({

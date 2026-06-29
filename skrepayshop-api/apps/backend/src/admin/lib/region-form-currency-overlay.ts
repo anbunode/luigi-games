@@ -1,4 +1,5 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query"
+import { formatRegionFormCurrencyOptions } from "./region-form-ui"
 
 export type RegionFormCurrencyRow = {
   id: string
@@ -126,7 +127,7 @@ async function fetchRegionFormCurrencies(): Promise<RegionFormCurrencyRow[]> {
   }
 
   const body = await response.json()
-  return body.supported_currencies ?? []
+  return formatRegionFormCurrencyOptions(body.supported_currencies ?? [])
 }
 
 function watchStoreCache(queryClient: QueryClient) {

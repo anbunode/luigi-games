@@ -8,6 +8,7 @@ import { ContainerRegistrationKeys, MedusaError, generateEntityId } from "@medus
 import { getPlatformPool } from "./platform-db"
 import {
   ensureAllStoreCurrenciesWithTaxExclusive,
+  formatStoreCurrenciesForRegionForm,
   loadStoreEnabledCurrenciesForAdmin,
   loadMasterCurrencyCatalog,
   loadMasterCurrencyCatalogForAdmin,
@@ -219,9 +220,10 @@ export async function tenantAdminStoreByIdGetShim(
     }
 
     if (isRegionFormAdminRequest(req)) {
-      const supported_currencies = await loadMasterCurrencyCatalogForAdmin(
-        schema,
-        id
+      await ensureAllStoreCurrenciesWithTaxExclusive(schema, id)
+
+      const supported_currencies = formatStoreCurrenciesForRegionForm(
+        await loadStoreEnabledCurrenciesForAdmin(schema, id)
       )
 
       res.json({
@@ -348,9 +350,10 @@ export async function tenantAdminStoresShim(
     const storeId = rows[0]?.id
 
     if (isRegionFormAdminRequest(req) && storeId) {
-      const supported_currencies = await loadMasterCurrencyCatalogForAdmin(
-        schema,
-        storeId
+      await ensureAllStoreCurrenciesWithTaxExclusive(schema, storeId)
+
+      const supported_currencies = formatStoreCurrenciesForRegionForm(
+        await loadStoreEnabledCurrenciesForAdmin(schema, storeId)
       )
 
       res.json({

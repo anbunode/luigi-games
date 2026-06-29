@@ -101,6 +101,23 @@ export type AdminStoreCurrencyRow = StoreCurrencyRow & {
   }
 }
 
+export function formatStoreCurrenciesForRegionForm(
+  rows: AdminStoreCurrencyRow[]
+): AdminStoreCurrencyRow[] {
+  return rows.map((row) => {
+    const code = (row.currency?.code ?? row.currency_code).toUpperCase()
+
+    return {
+      ...row,
+      currency: {
+        ...row.currency,
+        code: row.currency?.code ?? row.currency_code,
+        name: code,
+      },
+    }
+  })
+}
+
 /** Formato nativo Medusa AdminStoreCurrency (con relación currency) */
 export async function loadStoreEnabledCurrenciesForAdmin(
   schema: string,
