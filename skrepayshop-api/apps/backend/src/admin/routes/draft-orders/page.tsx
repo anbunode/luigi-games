@@ -10,9 +10,11 @@ import {
   toast,
 } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { FormEvent, useState } from "react"
+import { FormEvent, useEffect, useState } from "react"
 import {
   createDraftOrder,
+  customerLabel,
+  fetchCustomersForDraft,
   fetchDraftOrders,
   fetchRegionsForDraft,
   fetchSalesChannelsForDraft,
@@ -25,8 +27,17 @@ const DraftOrdersPage = () => {
   const queryClient = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
   const [email, setEmail] = useState("")
+  const [customerId, setCustomerId] = useState("")
+  const [customerSearch, setCustomerSearch] = useState("")
   const [regionId, setRegionId] = useState("")
   const [salesChannelId, setSalesChannelId] = useState("")
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("crear") === "1") {
+      setShowCreate(true)
+    }
+  }, [])
 
   const listQuery = useQuery({
     queryKey: ["skrepay", "draft-orders", "list"],
@@ -46,13 +57,25 @@ const DraftOrdersPage = () => {
     enabled: showCreate,
   })
 
+  const customerCountQuery = useQuery({
+    queryKey: ["skrepay", "draft-orders", "customers-count"],
+    queryFn: () => fetchCustomersForDraft(""),
+    enabled: showCreate,
+  })
+
+  const customersQuery = useQuery({
+    queryKey: ["skrepay", "draft-orders", "customers", customerSearch],
+    queryFn: () => fetchCustomersForDraft(customerSearch),
+    enabled: showCreate,
+  })
+
   const createMutation = useMutation({
     mutationFn: createDraftOrder,
     onSuccess: (data) => {
       toast.success("Borrador creado")
       void queryClient.invalidateQueries({ queryKey: ["skrepay", "draft-orders"] })
       setShowCreate(false)
-      window.location.assign(`${DRAFT_ORDERS_PATH}/${data.draft_order.id}`)
+      window.location.assign(`/app${DRAFT_ORDERS_PATH}/${data.draft_order.id}`)
     },
     onError: (error) => {
       toast.error(
@@ -64,6 +87,8 @@ const DraftOrdersPage = () => {
   const rows = listQuery.data?.draft_orders ?? []
   const regions = regionsQuery.data ?? []
   const channels = channelsQuery.data ?? []
+  const customers = customersQuery.data?.customers ?? []
+  const hasCustomers = (customerCountQuery.data?.count ?? 0) > 0
 
   const handleCreate = (event: FormEvent) => {
     event.preventDefault()
@@ -73,14 +98,18 @@ const DraftOrdersPage = () => {
       return
     }
 
-    if (!email.trim()) {
-      toast.error("Indica el email del cliente")
+    const selectedCustomer = customers.find((customer) => customer.id === customerId)
+
+    if (!customerId && !email.trim()) {
+      toast.error("Indica el email del cliente o selecciona un cliente")
       return
     }
 
     createMutation.mutate({
       region_id: regionId,
-      email: email.trim(),
+      ...(customerId
+        ? { customer_id: customerId, email: selectedCustomer?.email }
+        : { email: email.trim() }),
       ...(salesChannelId ? { sales_channel_id: salesChannelId } : {}),
     })
   }
@@ -105,7 +134,9 @@ const DraftOrdersPage = () => {
 
       {showCreate ? (
         <form className="flex flex-col gap-6 px-6 py-8" onSubmit={handleCreate}>
-          {regionsQuery.isLoading || channelsQuery.isLoading ? (
+          {regionsQuery.isLoading ||
+          channelsQuery.isLoading ||
+          customerCountQuery.isLoading ? (
             <Text className="text-ui-fg-subtle">Cargando opciones…</Text>
           ) : regionsQuery.isError || channelsQuery.isError ? (
             <Text className="text-ui-fg-error">
@@ -140,39 +171,74 @@ const DraftOrdersPage = () => {
                 </Select>
               </div>
 
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="draft-email">Email del cliente</Label>
-                <Input
-                  id="draft-email"
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="cliente@ejemplo.com"
-                />
-              </div>
-
-              {channels.length > 0 ? (
+              {hasCustomers ? (
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="draft-channel">Canal de venta (opcional)</Label>
+                  <Label htmlFor="draft-customer">Cliente</Label>
+                  <Input
+                    id="draft-customer-search"
+                    value={customerSearch}
+                    onChange={(event) => setCustomerSearch(event.target.value)}
+                    placeholder="Buscar cliente"
+                  />
                   <Select
-                    value={salesChannelId || undefined}
-                    onValueChange={setSalesChannelId}
+                    value={customerId || undefined}
+                    onValueChange={(value) => {
+                      setCustomerId(value)
+                      const selected = customers.find(
+                        (customer) => customer.id === value
+                      )
+                      if (selected?.email) {
+                        setEmail(selected.email)
+                      }
+                    }}
                   >
-                    <Select.Trigger id="draft-channel">
-                      <Select.Value placeholder="Por defecto" />
+                    <Select.Trigger id="draft-customer">
+                      <Select.Value placeholder="Seleccionar cliente" />
                     </Select.Trigger>
                     <Select.Content>
-                      {channels.map((channel) => (
-                        <Select.Item key={channel.id} value={channel.id}>
-                          {channel.name}
+                      {customers.map((customer) => (
+                        <Select.Item key={customer.id} value={customer.id}>
+                          {customerLabel(customer)}
                         </Select.Item>
                       ))}
                     </Select.Content>
                   </Select>
                 </div>
-              ) : null}
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="draft-email">Email del cliente</Label>
+                  <Input
+                    id="draft-email"
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="cliente@ejemplo.com"
+                  />
+                </div>
+              )}
             </>
           )}
+
+          {channels.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="draft-channel">Canal de venta (opcional)</Label>
+              <Select
+                value={salesChannelId || undefined}
+                onValueChange={setSalesChannelId}
+              >
+                <Select.Trigger id="draft-channel">
+                  <Select.Value placeholder="Por defecto" />
+                </Select.Trigger>
+                <Select.Content>
+                  {channels.map((channel) => (
+                    <Select.Item key={channel.id} value={channel.id}>
+                      {channel.name}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
+            </div>
+          ) : null}
 
           <div className="flex gap-2">
             <Button
@@ -182,6 +248,7 @@ const DraftOrdersPage = () => {
               disabled={
                 regionsQuery.isLoading ||
                 channelsQuery.isLoading ||
+                customerCountQuery.isLoading ||
                 regionsQuery.isError ||
                 channelsQuery.isError ||
                 regions.length === 0
