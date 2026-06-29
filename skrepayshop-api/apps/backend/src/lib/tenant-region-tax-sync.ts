@@ -136,18 +136,18 @@ export async function syncTaxesForRegion(
   let taxRates = 0
   let hasTaxableCountry = false
 
-  await pool.query("begin")
+  for (const country of countries) {
+    const iso2 = country.iso_2.toLowerCase()
+    const taxPercent = getDefaultTaxRateForCountry(iso2)
 
-  try {
-    for (const country of countries) {
-      const iso2 = country.iso_2.toLowerCase()
-      const taxPercent = getDefaultTaxRateForCountry(iso2)
+    if (taxPercent === null) {
+      continue
+    }
 
-      if (taxPercent === null) {
-        continue
-      }
+    hasTaxableCountry = true
 
-      hasTaxableCountry = true
+    try {
+      await pool.query("begin")
 
       const existingTaxRegion = await pool.query<{ id: string }>(
         `select id from ${schemaQ}.tax_region
@@ -221,22 +221,25 @@ export async function syncTaxesForRegion(
           taxRates++
         }
       }
+
+      await pool.query("commit")
+    } catch (error) {
+      await pool.query("rollback")
+      console.error(
+        `[skrepay] tax sync failed for country ${iso2} in region ${regionId}:`,
+        error
+      )
     }
-
-    const enableTaxes = options.automaticTaxes ?? hasTaxableCountry
-
-    await pool.query(
-      `update ${schemaQ}.region
-       set automatic_taxes = $2, updated_at = now()
-       where id = $1 and deleted_at is null`,
-      [regionId, enableTaxes && hasTaxableCountry]
-    )
-
-    await pool.query("commit")
-  } catch (error) {
-    await pool.query("rollback")
-    throw error
   }
+
+  const enableTaxes = options.automaticTaxes ?? hasTaxableCountry
+
+  await pool.query(
+    `update ${schemaQ}.region
+     set automatic_taxes = $2, updated_at = now()
+     where id = $1 and deleted_at is null`,
+    [regionId, enableTaxes && hasTaxableCountry]
+  )
 
   return {
     tax_regions: taxRegions,
