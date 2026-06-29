@@ -9,6 +9,8 @@ import { tenantRegionCountryPoolMiddleware } from "../lib/tenant-region-country-
 import {
   tenantAdminSalesChannelByIdGetShim,
   tenantAdminSalesChannelsShim,
+  tenantAdminStoreByIdGetShim,
+  tenantAdminStoresShim,
   tenantAdminUsersMeShim,
 } from "../lib/tenant-admin-shim"
 
@@ -22,6 +24,16 @@ export default defineMiddlewares({
       method: "GET",
       matcher: "/admin/users/me",
       middlewares: [tenantAdminUsersMeShim],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/stores",
+      middlewares: [tenantAdminStoresShim],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/stores/:id",
+      middlewares: [tenantAdminStoreByIdGetShim],
     },
     {
       method: "GET",
