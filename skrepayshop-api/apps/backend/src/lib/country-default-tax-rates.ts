@@ -12,6 +12,7 @@ export const COUNTRY_DEFAULT_TAX_RATES: Record<string, number> = {
   nl: 21,
   be: 21,
   at: 20,
+  al: 20,
   ie: 23,
   pl: 23,
   se: 25,

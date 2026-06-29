@@ -146,10 +146,12 @@ export async function syncTaxesForRegion(
 
     hasTaxableCountry = true
 
-    try {
-      await pool.query("begin")
+    const client = await pool.connect()
 
-      const existingTaxRegion = await pool.query<{ id: string }>(
+    try {
+      await client.query("begin")
+
+      const existingTaxRegion = await client.query<{ id: string }>(
         `select id from ${schemaQ}.tax_region
          where deleted_at is null
            and lower(country_code) = $1
@@ -163,7 +165,7 @@ export async function syncTaxesForRegion(
 
       if (!taxRegionId) {
         taxRegionId = generateEntityId(undefined, "txreg")
-        await pool.query(
+        await client.query(
           `insert into ${schemaQ}.tax_region
              (id, provider_id, country_code, created_at, updated_at)
            values ($1, $2, $3, now(), now())`,
@@ -176,7 +178,7 @@ export async function syncTaxesForRegion(
       const rateCode = `vat_${iso2}`
       const rateName = `IVA ${country.display_name ?? iso2.toUpperCase()} (${rateLabel}%)`
 
-      const existingRate = await pool.query<{ id: string }>(
+      const existingRate = await client.query<{ id: string }>(
         `select id from ${schemaQ}.tax_rate
          where deleted_at is null and tax_region_id = $1 and code = $2
          limit 1`,
@@ -184,14 +186,14 @@ export async function syncTaxesForRegion(
       )
 
       if (existingRate.rows[0]?.id) {
-        await pool.query(
+        await client.query(
           `update ${schemaQ}.tax_rate
            set rate = $2, name = $3, is_default = true, updated_at = now()
            where id = $1`,
           [existingRate.rows[0].id, taxPercent, rateName]
         )
       } else {
-        const existingDefault = await pool.query<{ id: string }>(
+        const existingDefault = await client.query<{ id: string }>(
           `select id from ${schemaQ}.tax_rate
            where deleted_at is null and tax_region_id = $1 and is_default = true
            limit 1`,
@@ -199,14 +201,14 @@ export async function syncTaxesForRegion(
         )
 
         if (existingDefault.rows[0]?.id) {
-          await pool.query(
+          await client.query(
             `update ${schemaQ}.tax_rate
              set rate = $2, code = $3, name = $4, is_default = true, updated_at = now()
              where id = $1`,
             [existingDefault.rows[0].id, taxPercent, rateCode, rateName]
           )
         } else {
-          await pool.query(
+          await client.query(
             `insert into ${schemaQ}.tax_rate
                (id, rate, code, name, is_default, is_combinable, tax_region_id, created_at, updated_at)
              values ($1, $2, $3, $4, true, false, $5, now(), now())`,
@@ -222,13 +224,15 @@ export async function syncTaxesForRegion(
         }
       }
 
-      await pool.query("commit")
+      await client.query("commit")
     } catch (error) {
-      await pool.query("rollback")
+      await client.query("rollback")
       console.error(
         `[skrepay] tax sync failed for country ${iso2} in region ${regionId}:`,
         error
       )
+    } finally {
+      client.release()
     }
   }
 
