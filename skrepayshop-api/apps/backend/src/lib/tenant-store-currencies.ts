@@ -343,6 +343,23 @@ export async function listTenantRegionCurrencyCodes(
   return result.rows.map((row) => row.currency_code)
 }
 
+/** Regiones activas del panel; si el tenant no tiene filas, usa public (datos legacy). */
+export async function resolveActiveRegionCurrencyCodes(
+  tenantSchema: string
+): Promise<string[]> {
+  const tenantCodes = await listTenantRegionCurrencyCodes(tenantSchema)
+
+  if (tenantCodes.length > 0) {
+    return tenantCodes
+  }
+
+  if (tenantSchema === "public") {
+    return tenantCodes
+  }
+
+  return listTenantRegionCurrencyCodes("public")
+}
+
 /** Moneda base + monedas de regiones, deduplicadas, con metadata para el admin. */
 export async function loadProductPricingCurrenciesForAdmin(
   schema: string,
@@ -351,7 +368,7 @@ export async function loadProductPricingCurrenciesForAdmin(
 ): Promise<AdminStoreCurrencyRow[]> {
   const regionCodes =
     adminRegionCurrencyCodes ??
-    (await listTenantRegionCurrencyCodes(schema))
+    (await resolveActiveRegionCurrencyCodes(schema))
 
   const pricingRows = await buildProductPricingCurrencies(
     schema,
@@ -410,7 +427,7 @@ export async function syncStoreCurrenciesFromRegions(
 ): Promise<void> {
   const schemaQ = quoteIdent(schema)
   const pool = getPlatformPool()
-  const regionCodes = await listTenantRegionCurrencyCodes(schema)
+  const regionCodes = await resolveActiveRegionCurrencyCodes(schema)
 
   const defaultRow = await pool.query<{ currency_code: string }>(
     `select lower(currency_code) as currency_code

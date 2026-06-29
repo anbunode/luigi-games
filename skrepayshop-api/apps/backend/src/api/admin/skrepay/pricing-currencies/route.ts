@@ -11,6 +11,7 @@ import { getPlatformPool } from "../../../../lib/platform-db"
 import {
   listTenantRegionCurrencyCodes,
   loadProductPricingCurrenciesForAdmin,
+  resolveActiveRegionCurrencyCodes,
   syncStoreCurrenciesFromRegionsForTenant,
 } from "../../../../lib/tenant-store-currencies"
 
@@ -65,7 +66,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
-  const regionCurrencyCodes = await listTenantRegionCurrencyCodes(schema)
+  const regionCurrencyCodes = await resolveActiveRegionCurrencyCodes(schema)
   const supported_currencies = await loadProductPricingCurrenciesForAdmin(
     schema,
     storeId,
