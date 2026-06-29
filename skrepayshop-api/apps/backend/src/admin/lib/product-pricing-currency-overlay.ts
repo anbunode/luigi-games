@@ -1,98 +1,73 @@
-import type { QueryClient, QueryKey } from "@tanstack/react-query"
+import type { QueryClient } from "@tanstack/react-query"
 import type { RegionFormCurrencyRow } from "./region-form-currency-overlay"
 import {
-  isStoreQueryKey,
   patchStoreCacheWithCurrencies,
   restoreStoreCache,
   snapshotStoreCache,
 } from "./region-form-currency-overlay"
+import { hideNonDefaultStoreCurrencyPriceColumns } from "./product-pricing-ui"
 
-type CacheSnapshot = Array<[QueryKey, unknown]>
+type CacheSnapshot = ReturnType<typeof snapshotStoreCache>
 
 let storeSnapshot: CacheSnapshot | null = null
-let regionsSnapshot: CacheSnapshot | null = null
 let overlayCurrencies: RegionFormCurrencyRow[] = []
+let overlayDefaultCode = "usd"
 let overlayActive = false
 
-function isRegionsListQueryKey(queryKey: QueryKey): boolean {
-  return (
-    Array.isArray(queryKey) &&
-    queryKey[0] === "regions" &&
-    queryKey[1] === "list"
-  )
-}
-
-function snapshotRegionsCache(queryClient: QueryClient): CacheSnapshot {
-  return queryClient.getQueriesData({
-    predicate: (query) => isRegionsListQueryKey(query.queryKey),
+async function fetchStorePricingContext(): Promise<{
+  currencies: RegionFormCurrencyRow[]
+  defaultCode: string
+}> {
+  const response = await fetch(`/admin/stores?_ts=${Date.now()}`, {
+    credentials: "include",
+    cache: "no-store",
   })
-}
-
-function patchRegionsCacheEmpty(queryClient: QueryClient) {
-  queryClient.setQueriesData(
-    {
-      predicate: (query) => isRegionsListQueryKey(query.queryKey),
-    },
-    (old: unknown) => {
-      if (!old || typeof old !== "object") {
-        return {
-          regions: [],
-          count: 0,
-          offset: 0,
-          limit: 0,
-        }
-      }
-
-      return {
-        ...(old as Record<string, unknown>),
-        regions: [],
-        count: 0,
-      }
-    }
-  )
-}
-
-function restoreRegionsCache(queryClient: QueryClient, snapshot: CacheSnapshot) {
-  for (const [key, data] of snapshot) {
-    queryClient.setQueryData(key, data)
-  }
-}
-
-async function fetchProductPricingCurrencies(): Promise<RegionFormCurrencyRow[]> {
-  const response = await fetch(
-    `/admin/skrepay/pricing-currencies?_ts=${Date.now()}`,
-    {
-      credentials: "include",
-      cache: "no-store",
-    }
-  )
 
   if (!response.ok) {
-    return []
+    return { currencies: [], defaultCode: "usd" }
   }
 
   const body = await response.json()
-  return body.supported_currencies ?? []
+  const list = (body.stores?.[0]?.supported_currencies ??
+    []) as RegionFormCurrencyRow[]
+
+  if (!list.length) {
+    return { currencies: [], defaultCode: "usd" }
+  }
+
+  const defaultCode =
+    list.find((row) => row.is_default)?.currency_code ?? list[0].currency_code
+
+  const reordered = [
+    ...list.filter((row) => row.is_default),
+    ...list.filter((row) => !row.is_default),
+  ]
+
+  return { currencies: reordered, defaultCode }
+}
+
+export function applyProductPricingUi(defaultCurrencyCode: string) {
+  hideNonDefaultStoreCurrencyPriceColumns(defaultCurrencyCode)
 }
 
 export async function activateProductPricingCurrencyOverlay(
   queryClient: QueryClient
 ) {
-  const currencies = await fetchProductPricingCurrencies()
+  const { currencies, defaultCode } = await fetchStorePricingContext()
 
-  if (currencies.length === 0) {
+  if (!currencies.length) {
     return
   }
 
   if (!overlayActive) {
     storeSnapshot = snapshotStoreCache(queryClient)
-    regionsSnapshot = snapshotRegionsCache(queryClient)
   }
 
   overlayCurrencies = currencies
+  overlayDefaultCode = defaultCode.toLowerCase()
   overlayActive = true
   patchStoreCacheWithCurrencies(queryClient, currencies)
-  patchRegionsCacheEmpty(queryClient)
+  applyProductPricingUi(overlayDefaultCode)
 }
 
 export function deactivateProductPricingCurrencyOverlay(
@@ -102,16 +77,16 @@ export function deactivateProductPricingCurrencyOverlay(
     restoreStoreCache(queryClient, storeSnapshot)
   }
 
-  if (regionsSnapshot) {
-    restoreRegionsCache(queryClient, regionsSnapshot)
-  }
-
   storeSnapshot = null
-  regionsSnapshot = null
   overlayCurrencies = []
+  overlayDefaultCode = "usd"
   overlayActive = false
 }
 
 export function isProductPricingCurrencyOverlayActive() {
   return overlayActive
+}
+
+export function getProductPricingDefaultCurrencyCode() {
+  return overlayDefaultCode
 }

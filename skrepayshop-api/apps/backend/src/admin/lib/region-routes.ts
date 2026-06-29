@@ -35,6 +35,7 @@ export function isProductPricingPage(pathname: string): boolean {
   return (
     /\/products\/create\b/.test(path) ||
     /\/products\/[^/]+\/prices\b/.test(path) ||
+    /\/products\/[^/]+\/variants\/[^/]+\b/.test(path) ||
     (/\/products\/[^/]+$/.test(path) && !/\/products$/.test(path))
   )
 }
