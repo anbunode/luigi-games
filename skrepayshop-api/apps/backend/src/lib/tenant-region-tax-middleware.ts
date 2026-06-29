@@ -137,6 +137,36 @@ function parseResponseBody(body: unknown): unknown {
   }
 }
 
+async function runTaxSyncForResponse(
+  schema: string,
+  req: MedusaRequest,
+  res: MedusaResponse,
+  responseBody: unknown
+) {
+  if (res.statusCode >= 400) {
+    return
+  }
+
+  const regionId =
+    readRegionIdFromBody(responseBody) ??
+    (typeof req.params.id === "string" ? req.params.id : null)
+
+  if (!regionId) {
+    return
+  }
+
+  const requestCountries = readCountryCodesFromBody(req.body)
+  const responseCountries = readCountryCodesFromResponse(responseBody)
+  const countryCodes = [...new Set([...requestCountries, ...responseCountries])]
+  const automaticTaxes = readAutomaticTaxesFromBody(req.body)
+
+  await syncTaxesForRegion(schema, regionId, {
+    tenantSchema: schema,
+    countryCodes: countryCodes.length > 0 ? countryCodes : undefined,
+    automaticTaxes,
+  })
+}
+
 export async function tenantRegionTaxSyncMiddleware(
   req: MedusaRequest,
   res: MedusaResponse,
@@ -149,53 +179,33 @@ export async function tenantRegionTaxSyncMiddleware(
     return
   }
 
-  const requestCountries = readCountryCodesFromBody(req.body)
-  const requestAutomaticTaxes = readAutomaticTaxesFromBody(req.body)
-  let responseBody: unknown
-
-  const captureResponse = (body: unknown) => {
-    responseBody = parseResponseBody(body)
-  }
-
   const originalJson = res.json.bind(res)
   res.json = ((body: unknown) => {
-    captureResponse(body)
-    return originalJson(body)
+    void runTaxSyncForResponse(schema, req, res, body)
+      .catch((error) => {
+        console.error("[skrepay] tax sync failed:", error)
+      })
+      .finally(() => {
+        originalJson(body)
+      })
+
+    return res
   }) as MedusaResponse["json"]
 
   const originalSend = res.send.bind(res)
   res.send = ((body: unknown) => {
-    captureResponse(body)
-    return originalSend(body)
+    const parsed = parseResponseBody(body)
+
+    void runTaxSyncForResponse(schema, req, res, parsed)
+      .catch((error) => {
+        console.error("[skrepay] tax sync failed:", error)
+      })
+      .finally(() => {
+        originalSend(body)
+      })
+
+    return res
   }) as MedusaResponse["send"]
-
-  res.on("finish", () => {
-    if (res.statusCode >= 400) {
-      return
-    }
-
-    const regionId =
-      readRegionIdFromBody(responseBody) ??
-      (typeof req.params.id === "string" ? req.params.id : null)
-
-    if (!regionId) {
-      return
-    }
-
-    const responseCountries = readCountryCodesFromResponse(responseBody)
-    const countryCodes = [...new Set([...requestCountries, ...responseCountries])]
-
-    syncTaxesForRegion(schema, regionId, {
-      tenantSchema: schema,
-      countryCodes: countryCodes.length > 0 ? countryCodes : undefined,
-      automaticTaxes: requestAutomaticTaxes,
-    }).catch((error) => {
-      console.error(
-        `[skrepay] tax sync failed for region ${regionId}:`,
-        error
-      )
-    })
-  })
 
   next()
 }
