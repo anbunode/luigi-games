@@ -84,12 +84,6 @@ function syncLoaderTheme(loader: HTMLElement) {
   loader.setAttribute("data-skrepay-theme", theme)
   loader.style.colorScheme = theme
   loader.style.backgroundColor = colors.bg
-
-  const logo = loader.querySelector<HTMLImageElement>(".skrepay-loader-logo")
-
-  if (logo) {
-    logo.style.filter = theme === "light" ? "invert(1)" : "none"
-  }
 }
 
 function ensureLoaderStyles() {

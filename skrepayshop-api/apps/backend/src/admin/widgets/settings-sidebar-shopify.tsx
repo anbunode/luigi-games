@@ -31,10 +31,6 @@ const shopifySettingsSidebarStyles = `
     pointer-events: none;
   }
 
-  #${SETTINGS_LOADER_ID}[data-skrepay-theme="light"] .skrepay-loader-logo {
-    filter: invert(1);
-  }
-
   @keyframes skrepay-logo-blink {
     0%, 100% {
       opacity: 1;
