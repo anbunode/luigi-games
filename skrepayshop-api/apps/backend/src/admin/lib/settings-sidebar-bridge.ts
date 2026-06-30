@@ -3,8 +3,14 @@ import {
   SKREPAY_ROUTE_CHANGE_EVENT,
 } from "./region-routes"
 import { getSettingsNavIconPath } from "./settings-sidebar-routes"
-import { SETTINGS_SHELL_FLAG } from "./settings-shopify-skin-styles"
-import { syncSettingsShopifySkin } from "./settings-shopify-skin"
+import {
+  hideSettingsLoadingOverlayImmediately,
+  scheduleHideSettingsLoadingOverlay,
+  showSettingsLoadingOverlay,
+  shouldShowSettingsLoadingOverlay,
+} from "./settings-loading-overlay"
+
+const BODY_FLAG = "data-skrepay-shopify-settings-nav"
 const CHROME_ID = "skrepay-settings-sidebar-chrome"
 const HIDDEN_PROFILE = "data-skrepay-profile-hidden"
 const PROFILE_PATH = /\/settings\/profile(?:\/|$)/
@@ -281,19 +287,24 @@ export function syncSettingsSidebarBridge() {
   }
 
   if (!isSettingsPage(window.location.pathname)) {
-    document.body.removeAttribute(SETTINGS_SHELL_FLAG)
+    document.body.removeAttribute(BODY_FLAG)
+    hideSettingsLoadingOverlayImmediately()
     removeChrome()
     clearPreviouslyHiddenSections()
     return
   }
 
+  if (shouldShowSettingsLoadingOverlay()) {
+    showSettingsLoadingOverlay()
+  }
+
   redirectProfileRoute()
-  document.body.setAttribute(SETTINGS_SHELL_FLAG, "true")
-  syncSettingsShopifySkin()
+  document.body.setAttribute(BODY_FLAG, "true")
 
   const aside = findSettingsAside()
 
   if (!aside) {
+    scheduleHideSettingsLoadingOverlay()
     return
   }
 
@@ -301,6 +312,7 @@ export function syncSettingsSidebarBridge() {
   void ensureChrome(aside).then(() => {
     decorateNavLinks(aside)
     applyNavSearchFilter(aside)
+    scheduleHideSettingsLoadingOverlay()
   })
 }
 

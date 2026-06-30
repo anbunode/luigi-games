@@ -4,9 +4,9 @@ import { installRegionFormUiBridge } from "./region-form-bridge"
 import { installStoreEditUiBridge } from "./store-edit-bridge"
 import { readLocalCurrencyTaxCheckbox } from "./store-edit-ui"
 import { formatRegionFormCurrencyOptions } from "./region-form-ui"
-import { isProductPricingPage, isRegionFormPage, isStoreEditPage, notifyRouteChange } from "./region-routes"
+import { isSettingsPage, isProductPricingPage, isRegionFormPage, isStoreEditPage, notifyRouteChange } from "./region-routes"
 import { installSettingsSidebarBridge } from "./settings-sidebar-bridge"
-import { installSettingsShopifySkin } from "./settings-shopify-skin"
+import { showSettingsLoadingOverlay, shouldShowSettingsLoadingOverlay } from "./settings-loading-overlay"
 
 declare global {
   interface Window {
@@ -348,6 +348,9 @@ export function installAuthBridge() {
     }
     const result = originalPushState(...args)
     notifyRouteChange()
+    if (shouldShowSettingsLoadingOverlay()) {
+      showSettingsLoadingOverlay()
+    }
     return result
   }) as History["pushState"]
 
@@ -359,12 +362,18 @@ export function installAuthBridge() {
     }
     const result = originalReplaceState(...args)
     notifyRouteChange()
+    if (shouldShowSettingsLoadingOverlay()) {
+      showSettingsLoadingOverlay()
+    }
     return result
   }) as History["replaceState"]
 
   installProductPricingBridge()
   installRegionFormUiBridge()
   installStoreEditUiBridge()
-  installSettingsShopifySkin()
   installSettingsSidebarBridge()
+
+  if (isSettingsPage(window.location.pathname)) {
+    showSettingsLoadingOverlay()
+  }
 }
