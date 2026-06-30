@@ -11,6 +11,8 @@ import { StoreAddressModal } from "./StoreAddressModal"
 import { StoreBusinessInfoModal } from "./StoreBusinessInfoModal"
 import { StoreContactDetailsModal } from "./StoreContactDetailsModal"
 import { StoreDefaultCurrencySelect } from "./StoreDefaultCurrencySelect"
+import { StoreLanguageSelect } from "./StoreLanguageSelect"
+import { StoreMfaSection } from "./StoreMfaSection"
 import {
   REGIONS_PATH,
   countryFlagEmoji,
@@ -269,6 +271,31 @@ export function StoreSettingsShopifyPage() {
             </div>
           </SettingsRow>
         </SettingsCard>
+      </SectionBlock>
+
+      <SectionBlock
+        title="Preferencias del panel"
+        description="Idioma de la interfaz de administración"
+      >
+        <SettingsCard>
+          <SettingsRow trailing={<StoreLanguageSelect />}>
+            <div className="min-w-0 flex-1">
+              <Text size="small" weight="plus">
+                Idioma
+              </Text>
+              <Text size="small" className="text-ui-fg-subtle mt-0.5">
+                Elige el idioma en el que quieres ver el panel.
+              </Text>
+            </div>
+          </SettingsRow>
+        </SettingsCard>
+      </SectionBlock>
+
+      <SectionBlock
+        title="Autenticación en dos pasos"
+        description="Protege tu cuenta con una app de autenticación"
+      >
+        <StoreMfaSection />
       </SectionBlock>
 
       <StoreBusinessInfoModal

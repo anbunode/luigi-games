@@ -9,7 +9,7 @@ type I18nLike = {
 /**
  * SkrepayShop usa español como idioma del panel por defecto.
  * Medusa ya incluye es.json; esto fuerza "es" en la primera sesión.
- * El usuario puede cambiar a otro idioma en Perfil → Editar perfil → Idioma.
+ * El usuario puede cambiar a otro idioma en Configuración → Tienda → Idioma.
  */
 export function applySkrepayDefaultLocale(i18n: I18nLike): void {
   if (typeof window === "undefined") {
