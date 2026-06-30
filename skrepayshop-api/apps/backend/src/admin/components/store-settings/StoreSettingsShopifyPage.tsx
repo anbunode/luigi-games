@@ -1,18 +1,17 @@
-import { Heading, IconButton, Text } from "@medusajs/ui"
+import { Heading, Text } from "@medusajs/ui"
 import type { ReactNode } from "react"
 import { useState } from "react"
 import {
   BuildingStorefront,
   ChevronRightMini,
-  EllipsisHorizontal,
   MapPin,
 } from "@medusajs/icons"
 import { useQuery } from "@tanstack/react-query"
 import { StoreAddressModal } from "./StoreAddressModal"
+import { StoreBusinessInfoModal } from "./StoreBusinessInfoModal"
 import { StoreContactDetailsModal } from "./StoreContactDetailsModal"
 import { StoreDefaultCurrencySelect } from "./StoreDefaultCurrencySelect"
 import {
-  STORE_EDIT_PATH,
   REGIONS_PATH,
   countryFlagEmoji,
   fetchStoreSettingsSnapshot,
@@ -106,22 +105,8 @@ function SectionBlock({
   )
 }
 
-function EditMenuButton() {
-  return (
-    <IconButton
-      size="small"
-      variant="transparent"
-      className="rounded-full border border-ui-border-base"
-      asChild
-    >
-      <a href={STORE_EDIT_PATH} aria-label="Editar tienda">
-        <EllipsisHorizontal />
-      </a>
-    </IconButton>
-  )
-}
-
 export function StoreSettingsShopifyPage() {
+  const [businessModalOpen, setBusinessModalOpen] = useState(false)
   const [contactModalOpen, setContactModalOpen] = useState(false)
   const [addressModalOpen, setAddressModalOpen] = useState(false)
 
@@ -163,7 +148,9 @@ export function StoreSettingsShopifyPage() {
     snapshotQuery.data
 
   const address = formatPostalAddress(location, region)
-  const countryCode = resolveCountryCode(location, region)
+  const countryCode =
+    (store.metadata?.business_country_code as string | undefined)?.toLowerCase() ??
+    resolveCountryCode(location, region)
   const flag = countryFlagEmoji(countryCode)
   const businessName =
     (store.metadata?.business_name as string | undefined) ?? store.name
@@ -184,7 +171,7 @@ export function StoreSettingsShopifyPage() {
         description="Entidad comercial que se usa para productos financieros, mercados, apps e impuestos en esta tienda"
       >
         <SettingsCard>
-          <SettingsRow trailing={<EditMenuButton />}>
+          <SettingsRow onClick={() => setBusinessModalOpen(true)}>
             <div className="flex min-w-0 items-start gap-x-3">
               {flag ? (
                 <span className="mt-0.5 text-xl leading-none" aria-hidden>
@@ -284,6 +271,11 @@ export function StoreSettingsShopifyPage() {
         </SettingsCard>
       </SectionBlock>
 
+      <StoreBusinessInfoModal
+        open={businessModalOpen}
+        onOpenChange={setBusinessModalOpen}
+        snapshot={snapshotQuery.data}
+      />
       <StoreContactDetailsModal
         open={contactModalOpen}
         onOpenChange={setContactModalOpen}

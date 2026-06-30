@@ -1,6 +1,8 @@
 import { Button, FocusModal, Heading, Input, Label, Text, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
+import { parseInternationalPhone } from "../../lib/phone-country-codes"
+import { StorePhoneInput } from "./StorePhoneInput"
 import { StoreSettingsModalHeader } from "./StoreSettingsModalHeader"
 import {
   type StoreSettingsSnapshot,
@@ -109,12 +111,15 @@ export function StoreContactDetailsModal({
 
               <div className="flex flex-col gap-y-2">
                 <Label htmlFor="store-contact-phone">Teléfono de la tienda</Label>
-                <Input
+                <StorePhoneInput
                   id="store-contact-phone"
-                  type="tel"
                   value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                  placeholder="+58 412 0000000"
+                  defaultCountryCode={
+                    (snapshot.store.metadata?.phone_country_code as string | undefined) ??
+                    parseInternationalPhone(phone, "us").countryCode
+                  }
+                  disabled={mutation.isPending}
+                  onChange={setPhone}
                 />
               </div>
             </div>

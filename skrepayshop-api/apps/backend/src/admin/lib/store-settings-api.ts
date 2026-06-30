@@ -1,4 +1,5 @@
 import { adminFetch } from "./admin-api"
+import { parseInternationalPhone } from "./phone-country-codes"
 
 export type StoreSettingsStore = {
   id: string
@@ -255,9 +256,12 @@ export async function updateStoreContactDetails(
   currentMetadata: Record<string, unknown> | null | undefined,
   input: StoreContactDetailsInput
 ): Promise<StoreSettingsStore> {
+  const parsedPhone = parseInternationalPhone(input.phone, "us")
+
   const metadata = {
     ...(currentMetadata ?? {}),
     contact_email: input.contact_email.trim(),
+    phone_country_code: parsedPhone.countryCode,
     phone: input.phone.trim(),
   }
 
@@ -283,6 +287,56 @@ export type StoreAddressInput = {
   province: string
   postal_code: string
   country_code: string
+}
+
+export type StoreBusinessInfoInput = {
+  business_type: string
+  business_name: string
+  business_alias: string
+  business_country_code: string
+  phone: string
+  address_1: string
+  address_2: string
+  city: string
+  province: string
+  postal_code: string
+}
+
+export async function updateStoreBusinessInfo(
+  storeId: string,
+  locationId: string | null,
+  currentMetadata: Record<string, unknown> | null | undefined,
+  input: StoreBusinessInfoInput
+): Promise<void> {
+  const parsedPhone = parseInternationalPhone(
+    input.phone,
+    input.business_country_code
+  )
+
+  const metadata = {
+    ...(currentMetadata ?? {}),
+    business_type: input.business_type,
+    business_name: input.business_name.trim(),
+    business_alias: input.business_alias.trim(),
+    business_country_code: input.business_country_code.toLowerCase(),
+    phone_country_code: parsedPhone.countryCode,
+    phone: input.phone.trim(),
+  }
+
+  await adminFetch<{ store: StoreSettingsStore }>(`/admin/stores/${storeId}`, {
+    method: "POST",
+    body: JSON.stringify({ metadata }),
+  })
+
+  await updateStoreLocationAddress(storeId, locationId, {
+    companyName: input.business_name.trim() || input.business_alias.trim() || "Tienda",
+    address_1: input.address_1,
+    address_2: input.address_2,
+    city: input.city,
+    province: input.province,
+    postal_code: input.postal_code,
+    country_code: input.business_country_code,
+  })
 }
 
 export async function updateStoreLocationAddress(
