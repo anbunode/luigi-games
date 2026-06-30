@@ -1,11 +1,10 @@
-import { Button, FocusModal, Input, Label, Text, toast } from "@medusajs/ui"
+import { Button, FocusModal, Input, Label, toast } from "@medusajs/ui"
 import { MagnifyingGlass } from "@medusajs/icons"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
+import { StoreCountrySelect } from "./StoreCountrySelect"
 import { StoreSettingsModalHeader } from "./StoreSettingsModalHeader"
 import {
-  countryDisplayName,
-  countryFlagEmoji,
   type StoreSettingsSnapshot,
   updateStoreLocationAddress,
 } from "../../lib/store-settings-api"
@@ -23,12 +22,13 @@ export function StoreAddressModal({
 }: StoreAddressModalProps) {
   const queryClient = useQueryClient()
   const address = snapshot.location?.address
-  const defaultCountry =
+  const initialCountry =
     address?.country_code?.toLowerCase() ??
     snapshot.region?.countries?.[0]?.iso_2?.toLowerCase() ??
     "us"
 
   const [companyName, setCompanyName] = useState(snapshot.location?.name ?? "")
+  const [countryCode, setCountryCode] = useState(initialCountry)
   const [address1, setAddress1] = useState(address?.address_1 ?? "")
   const [address2, setAddress2] = useState(address?.address_2 ?? "")
   const [city, setCity] = useState(address?.city ?? "")
@@ -41,19 +41,19 @@ export function StoreAddressModal({
     }
 
     const nextAddress = snapshot.location?.address
+    const nextCountry =
+      nextAddress?.country_code?.toLowerCase() ??
+      snapshot.region?.countries?.[0]?.iso_2?.toLowerCase() ??
+      "us"
+
     setCompanyName(snapshot.location?.name ?? "")
+    setCountryCode(nextCountry)
     setAddress1(nextAddress?.address_1 ?? "")
     setAddress2(nextAddress?.address_2 ?? "")
     setCity(nextAddress?.city ?? "")
     setPostalCode(nextAddress?.postal_code ?? "")
     setProvince(nextAddress?.province ?? "")
   }, [open, snapshot])
-
-  const countryLabel = useMemo(
-    () => countryDisplayName(defaultCountry),
-    [defaultCountry]
-  )
-  const flag = countryFlagEmoji(defaultCountry)
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -67,7 +67,7 @@ export function StoreAddressModal({
           city,
           province,
           postal_code: postalCode,
-          country_code: defaultCountry,
+          country_code: countryCode,
         }
       ),
     onSuccess: () => {
@@ -107,14 +107,12 @@ export function StoreAddressModal({
           </div>
 
           <div className="flex flex-col gap-y-2">
-            <Label>País o región</Label>
-            <div className="bg-ui-bg-subtle flex items-center gap-x-2 rounded-md border border-ui-border-base px-3 py-2">
-              {flag ? <span aria-hidden>{flag}</span> : null}
-              <Text size="small">{countryLabel ?? defaultCountry.toUpperCase()}</Text>
-            </div>
-            <Text size="small" className="text-ui-fg-subtle">
-              Cambia el país en Información comercial.
-            </Text>
+            <Label htmlFor="store-address-country">País o región</Label>
+            <StoreCountrySelect
+              value={countryCode}
+              onValueChange={setCountryCode}
+              disabled={mutation.isPending}
+            />
           </div>
 
           <div className="flex flex-col gap-y-2">

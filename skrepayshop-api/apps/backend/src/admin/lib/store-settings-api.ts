@@ -200,6 +200,19 @@ export type StoreCurrencyOption = {
   is_tax_inclusive?: boolean
 }
 
+export type UniversalCountryOption = {
+  iso_2: string
+  display_name: string
+}
+
+export async function fetchUniversalCountries(): Promise<UniversalCountryOption[]> {
+  const body = await adminFetch<{ countries: UniversalCountryOption[] }>(
+    "/admin/skrepay/countries"
+  )
+
+  return body.countries ?? []
+}
+
 export async function updateStoreDefaultCurrency(
   storeId: string,
   currencies: StoreCurrencyOption[],
