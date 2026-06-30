@@ -3,23 +3,15 @@ import { useLayoutEffect } from "react"
 import { SKREPAY_ROUTE_CHANGE_EVENT } from "../lib/region-routes"
 
 const BODY_FLAG = "data-skrepay-hide-profile"
+const HIDDEN_MARKER = "data-skrepay-profile-hidden"
 
 const PROFILE_PATH = /\/settings\/profile(?:\/|$)/
 
 const hideProfileStyles = `
-  body[${BODY_FLAG}] a[href*="settings/profile"],
-  body[${BODY_FLAG}] a[href="/profile"],
-  body[${BODY_FLAG}] a[href="profile"] {
+  body[${BODY_FLAG}] aside a[href*="settings/profile"] {
     display: none !important;
   }
 `
-
-const ACCOUNT_GROUP_LABELS = new Set([
-  "mi cuenta",
-  "my account",
-  "mon compte",
-  "mein konto",
-])
 
 function normalizePath(pathname: string) {
   return pathname.replace(/^\/app(?=\/|$)/, "") || "/"
@@ -33,40 +25,54 @@ function redirectProfileRoute() {
   }
 }
 
-function hideProfileNavItems() {
-  document.querySelectorAll('a[href*="settings/profile"]').forEach((link) => {
-    const row =
-      link.closest("li") ??
-      link.closest('[role="menuitem"]') ??
-      link.parentElement
-
-    if (row instanceof HTMLElement) {
-      row.style.display = "none"
-    }
-  })
-
-  document.querySelectorAll("span, p, div, button").forEach((element) => {
-    const label = element.textContent?.trim().toLowerCase()
-
-    if (!label || !ACCOUNT_GROUP_LABELS.has(label)) {
+function clearPreviouslyHiddenSections() {
+  document.querySelectorAll(`[${HIDDEN_MARKER}="true"]`).forEach((element) => {
+    if (!(element instanceof HTMLElement)) {
       return
     }
 
-    const group =
-      element.closest("li") ??
-      element.closest("div.flex.flex-col") ??
-      element.parentElement
-
-    if (group instanceof HTMLElement) {
-      group.style.display = "none"
-    }
+    element.style.removeProperty("display")
+    element.removeAttribute(HIDDEN_MARKER)
   })
+}
+
+function hideMyAccountSidebarSection() {
+  clearPreviouslyHiddenSections()
+
+  document
+    .querySelectorAll('aside a[href*="settings/profile"]')
+    .forEach((link) => {
+      if (!(link instanceof HTMLAnchorElement)) {
+        return
+      }
+
+      const nav = link.closest("nav")
+      const section =
+        nav?.parentElement?.parentElement?.parentElement ?? null
+
+      if (!(section instanceof HTMLElement)) {
+        return
+      }
+
+      section.setAttribute(HIDDEN_MARKER, "true")
+      section.style.display = "none"
+
+      const divider = section.previousElementSibling
+
+      if (
+        divider instanceof HTMLElement &&
+        divider.classList.contains("px-3")
+      ) {
+        divider.setAttribute(HIDDEN_MARKER, "true")
+        divider.style.display = "none"
+      }
+    })
 }
 
 function syncProfileVisibility() {
   document.body.setAttribute(BODY_FLAG, "true")
   redirectProfileRoute()
-  hideProfileNavItems()
+  hideMyAccountSidebarSection()
 }
 
 const HideProfileSettings = () => {
@@ -86,6 +92,7 @@ const HideProfileSettings = () => {
       window.removeEventListener(SKREPAY_ROUTE_CHANGE_EVENT, syncProfileVisibility)
       window.removeEventListener("popstate", syncProfileVisibility)
       document.body.removeAttribute(BODY_FLAG)
+      clearPreviouslyHiddenSections()
     }
   }, [])
 
