@@ -34,6 +34,11 @@ export function isStoreEditPage(pathname: string): boolean {
   return /\/settings\/store\/edit\/?$/.test(normalizeAdminPathname(pathname))
 }
 
+/** Cualquier ruta bajo /settings */
+export function isSettingsPage(pathname: string): boolean {
+  return /\/settings(?:\/|$)/.test(normalizeAdminPathname(pathname))
+}
+
 /** Crear/editar producto o tabla de precios de variantes */
 export function isProductPricingPage(pathname: string): boolean {
   const path = normalizeAdminPathname(pathname)
