@@ -14,7 +14,10 @@ const BODY_FLAG = "data-skrepay-shopify-settings-nav"
 const CHROME_ID = "skrepay-settings-sidebar-chrome"
 const HIDDEN_PROFILE = "data-skrepay-profile-hidden"
 const HIDDEN_BREADCRUMB = "data-skrepay-settings-breadcrumb-hidden"
+const SETTINGS_TOPBAR_FLAG = "data-skrepay-settings-topbar"
 const PROFILE_PATH = /\/settings\/profile(?:\/|$)/
+
+let topbarStylesInstalled = false
 
 declare global {
   interface Window {
@@ -115,57 +118,247 @@ function clearPreviouslyHiddenSections() {
     element.style.removeProperty("display")
     element.removeAttribute(HIDDEN_BREADCRUMB)
   })
+
+  document.querySelectorAll(`[${SETTINGS_TOPBAR_FLAG}="true"]`).forEach((element) => {
+    element.removeAttribute(SETTINGS_TOPBAR_FLAG)
+  })
 }
 
-function isSettingsBreadcrumbHost(element: HTMLElement) {
-  const text = element.textContent?.trim().toLowerCase() ?? ""
-
-  if (
-    text.includes("configuraciones") ||
-    text.includes("settings") ||
-    element.querySelector('a[href*="/settings"], a[href*="/app/settings"]') ||
-    element.querySelector("ol, nav")
-  ) {
-    return true
-  }
-
-  return false
-}
-
-function hideSettingsTopbarBreadcrumb() {
-  const main = document.querySelector("main")
-
-  if (!main) {
+function ensureTopbarStyles() {
+  if (topbarStylesInstalled || typeof document === "undefined") {
     return
   }
 
-  main.querySelectorAll("div.border-b").forEach((bar) => {
-    if (!(bar instanceof HTMLElement)) {
-      return
+  topbarStylesInstalled = true
+  const style = document.createElement("style")
+  style.setAttribute("data-skrepay-settings-topbar-styles", "true")
+  style.textContent = `
+    body[${BODY_FLAG}] [${SETTINGS_TOPBAR_FLAG}="true"] > [${HIDDEN_BREADCRUMB}="true"],
+    body[${BODY_FLAG}] [${HIDDEN_BREADCRUMB}="true"] {
+      display: none !important;
+      width: 0 !important;
+      min-width: 0 !important;
+      max-width: 0 !important;
+      opacity: 0 !important;
+      overflow: hidden !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border: 0 !important;
+      pointer-events: none !important;
     }
 
-    const children = Array.from(bar.children).filter(
-      (child): child is HTMLElement => child instanceof HTMLElement
+    body[${BODY_FLAG}] [${SETTINGS_TOPBAR_FLAG}="true"] > :not(:first-child):not(:last-child) {
+      display: none !important;
+    }
+
+    body[${BODY_FLAG}] div:has(> main) > div[class*="h-14"] > :nth-child(2),
+    body[${BODY_FLAG}] aside ~ div > div[class*="h-14"] > :nth-child(2),
+    body[${BODY_FLAG}] aside ~ div div[class*="h-14"][class*="items-center"] > :nth-child(2) {
+      display: none !important;
+    }
+
+    body[${BODY_FLAG}] div:has(> main) > div[class*="h-14"] a[href*="/settings"],
+    body[${BODY_FLAG}] div:has(> main) > div[class*="h-14"] a[href*="/app/settings"],
+    body[${BODY_FLAG}] aside ~ div div[class*="h-14"] a[href*="/settings"],
+    body[${BODY_FLAG}] aside ~ div div[class*="h-14"] a[href*="/app/settings"] {
+      display: none !important;
+    }
+  `
+  document.head.appendChild(style)
+}
+
+function isNotificationsHost(element: HTMLElement) {
+  return (
+    element.classList.contains("ms-auto") ||
+    element.className.includes("ms-auto") ||
+    Boolean(
+      element.querySelector(
+        '[aria-label*="notification" i], [data-testid*="notification"]'
+      )
     )
+  )
+}
 
-    if (children.length < 2) {
+function findSettingsTopbar(): HTMLElement | null {
+  const aside = findSettingsAside()
+
+  if (!aside?.parentElement) {
+    return null
+  }
+
+  const layoutRoot = aside.parentElement
+  const main = layoutRoot.querySelector("main")
+
+  if (main) {
+    let sibling = main.previousElementSibling
+
+    while (sibling) {
+      if (sibling instanceof HTMLElement && sibling.querySelector("button")) {
+        return sibling
+      }
+
+      sibling = sibling.previousElementSibling
+    }
+
+    const mainParent = main.parentElement
+
+    if (mainParent) {
+      for (const child of mainParent.children) {
+        if (!(child instanceof HTMLElement)) {
+          continue
+        }
+
+        if (child === main) {
+          break
+        }
+
+        if (child.contains(aside)) {
+          continue
+        }
+
+        if (child.querySelector("button")) {
+          return child
+        }
+      }
+    }
+  }
+
+  for (const element of layoutRoot.querySelectorAll("div, header")) {
+    if (!(element instanceof HTMLElement)) {
+      continue
+    }
+
+    if (element === aside || aside.contains(element)) {
+      continue
+    }
+
+    if (!element.querySelector("button")) {
+      continue
+    }
+
+    const className = element.className
+
+    if (!className.includes("h-14") && !className.includes("items-center")) {
+      continue
+    }
+
+    const text = element.textContent?.toLowerCase() ?? ""
+
+    if (
+      text.includes("configuraciones") ||
+      text.includes("settings") ||
+      element.querySelector('a[href*="/settings"], a[href*="/app/settings"]')
+    ) {
+      return element
+    }
+  }
+
+  return null
+}
+
+function applyTopbarBreadcrumbHide(topbar: HTMLElement) {
+  topbar.setAttribute(SETTINGS_TOPBAR_FLAG, "true")
+
+  const children = Array.from(topbar.children).filter(
+    (child): child is HTMLElement => child instanceof HTMLElement
+  )
+
+  for (const child of children) {
+    if (child === children[0] && child.querySelector("button")) {
+      continue
+    }
+
+    if (isNotificationsHost(child)) {
+      continue
+    }
+
+    child.setAttribute(HIDDEN_BREADCRUMB, "true")
+  }
+
+  topbar
+    .querySelectorAll('a[href*="/settings"], a[href*="/app/settings"]')
+    .forEach((link) => {
+      if (!(link instanceof HTMLElement)) {
+        return
+      }
+
+      const host =
+        link.parentElement instanceof HTMLElement &&
+        link.parentElement.parentElement === topbar
+          ? link.parentElement
+          : link
+
+      host.setAttribute(HIDDEN_BREADCRUMB, "true")
+    })
+
+  topbar.querySelectorAll("span, p").forEach((node) => {
+    if (!(node instanceof HTMLElement)) {
       return
     }
 
-    const toggleHost = children[0]
-    const breadcrumbHost = children[1]
-
-    if (!toggleHost.querySelector("button")) {
+    if (node.closest("button")) {
       return
     }
 
-    if (!isSettingsBreadcrumbHost(breadcrumbHost)) {
+    const text = node.textContent?.trim().toLowerCase() ?? ""
+
+    if (!text || text === "...") {
+      node.setAttribute(HIDDEN_BREADCRUMB, "true")
       return
     }
 
-    breadcrumbHost.setAttribute(HIDDEN_BREADCRUMB, "true")
-    breadcrumbHost.style.display = "none"
+    if (
+      text.includes("configuraciones") ||
+      text.includes("settings") ||
+      /tienda|users|regiones|regions|store|tax|locations|workflows|api/i.test(
+        text
+      )
+    ) {
+      const hideTarget =
+        node.parentElement &&
+        node.parentElement !== topbar.firstElementChild &&
+        node.parentElement.parentElement === topbar
+          ? node.parentElement
+          : node
+
+      hideTarget.setAttribute(HIDDEN_BREADCRUMB, "true")
+    }
   })
+}
+
+function hideSettingsTopbarBreadcrumb() {
+  ensureTopbarStyles()
+
+  const topbar = findSettingsTopbar()
+
+  if (topbar) {
+    applyTopbarBreadcrumbHide(topbar)
+    return
+  }
+
+  const aside = findSettingsAside()
+
+  aside?.parentElement
+    ?.querySelectorAll("div, header")
+    .forEach((element) => {
+      if (!(element instanceof HTMLElement)) {
+        return
+      }
+
+      if (aside.contains(element)) {
+        return
+      }
+
+      if (!element.className.includes("h-14")) {
+        return
+      }
+
+      if (!element.querySelector("button")) {
+        return
+      }
+
+      applyTopbarBreadcrumbHide(element)
+    })
 }
 
 function hideProfileSection() {
@@ -374,7 +567,12 @@ export function syncSettingsSidebarBridge() {
   void ensureChrome(aside).then(() => {
     decorateNavLinks(aside)
     applyNavSearchFilter(aside)
+    hideSettingsTopbarBreadcrumb()
     scheduleHideSettingsLoadingOverlay()
+  })
+
+  window.requestAnimationFrame(() => {
+    hideSettingsTopbarBreadcrumb()
   })
 }
 
@@ -413,8 +611,7 @@ export function installSettingsSidebarBridge() {
 
       return (
         !target.closest(`#${CHROME_ID}`) &&
-        !target.hasAttribute("data-skrepay-settings-nav-icon") &&
-        !target.hasAttribute(HIDDEN_BREADCRUMB)
+        !target.hasAttribute("data-skrepay-settings-nav-icon")
       )
     })
 

@@ -5,6 +5,8 @@ import { SETTINGS_LOADER_LOGO_URL } from "../lib/settings-loading-logo"
 import { SETTINGS_LOADING_FLAG, SETTINGS_LOADER_ID } from "../lib/settings-loading-overlay"
 
 const BODY_FLAG = "data-skrepay-shopify-settings-nav"
+const SETTINGS_TOPBAR_FLAG = "data-skrepay-settings-topbar"
+const HIDDEN_BREADCRUMB = "data-skrepay-settings-breadcrumb-hidden"
 
 const shopifySettingsSidebarStyles = `
   body[${SETTINGS_LOADING_FLAG}] aside,
@@ -66,7 +68,33 @@ const shopifySettingsSidebarStyles = `
     width: 260px !important;
   }
 
-  body[${BODY_FLAG}] main > div > div.border-b > :nth-child(2) {
+  body[${BODY_FLAG}] [${SETTINGS_TOPBAR_FLAG}="true"] > [${HIDDEN_BREADCRUMB}="true"],
+  body[${BODY_FLAG}] [${HIDDEN_BREADCRUMB}="true"] {
+    display: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    pointer-events: none !important;
+  }
+
+  body[${BODY_FLAG}] [${SETTINGS_TOPBAR_FLAG}="true"] > :not(:first-child):not(:last-child) {
+    display: none !important;
+  }
+
+  body[${BODY_FLAG}] div:has(> main) > div[class*="h-14"] > :nth-child(2),
+  body[${BODY_FLAG}] aside ~ div > div[class*="h-14"] > :nth-child(2),
+  body[${BODY_FLAG}] aside ~ div div[class*="h-14"][class*="items-center"] > :nth-child(2) {
+    display: none !important;
+  }
+
+  body[${BODY_FLAG}] div:has(> main) > div[class*="h-14"] a[href*="/settings"],
+  body[${BODY_FLAG}] div:has(> main) > div[class*="h-14"] a[href*="/app/settings"],
+  body[${BODY_FLAG}] aside ~ div div[class*="h-14"] a[href*="/settings"],
+  body[${BODY_FLAG}] aside ~ div div[class*="h-14"] a[href*="/app/settings"] {
     display: none !important;
   }
 `
