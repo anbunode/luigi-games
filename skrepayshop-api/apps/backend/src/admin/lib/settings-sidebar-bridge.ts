@@ -13,6 +13,7 @@ import {
 const BODY_FLAG = "data-skrepay-shopify-settings-nav"
 const CHROME_ID = "skrepay-settings-sidebar-chrome"
 const HIDDEN_PROFILE = "data-skrepay-profile-hidden"
+const HIDDEN_BREADCRUMB = "data-skrepay-settings-breadcrumb-hidden"
 const PROFILE_PATH = /\/settings\/profile(?:\/|$)/
 
 declare global {
@@ -104,6 +105,66 @@ function clearPreviouslyHiddenSections() {
 
     element.style.removeProperty("display")
     element.removeAttribute(HIDDEN_PROFILE)
+  })
+
+  document.querySelectorAll(`[${HIDDEN_BREADCRUMB}="true"]`).forEach((element) => {
+    if (!(element instanceof HTMLElement)) {
+      return
+    }
+
+    element.style.removeProperty("display")
+    element.removeAttribute(HIDDEN_BREADCRUMB)
+  })
+}
+
+function isSettingsBreadcrumbHost(element: HTMLElement) {
+  const text = element.textContent?.trim().toLowerCase() ?? ""
+
+  if (
+    text.includes("configuraciones") ||
+    text.includes("settings") ||
+    element.querySelector('a[href*="/settings"], a[href*="/app/settings"]') ||
+    element.querySelector("ol, nav")
+  ) {
+    return true
+  }
+
+  return false
+}
+
+function hideSettingsTopbarBreadcrumb() {
+  const main = document.querySelector("main")
+
+  if (!main) {
+    return
+  }
+
+  main.querySelectorAll("div.border-b").forEach((bar) => {
+    if (!(bar instanceof HTMLElement)) {
+      return
+    }
+
+    const children = Array.from(bar.children).filter(
+      (child): child is HTMLElement => child instanceof HTMLElement
+    )
+
+    if (children.length < 2) {
+      return
+    }
+
+    const toggleHost = children[0]
+    const breadcrumbHost = children[1]
+
+    if (!toggleHost.querySelector("button")) {
+      return
+    }
+
+    if (!isSettingsBreadcrumbHost(breadcrumbHost)) {
+      return
+    }
+
+    breadcrumbHost.setAttribute(HIDDEN_BREADCRUMB, "true")
+    breadcrumbHost.style.display = "none"
   })
 }
 
@@ -309,6 +370,7 @@ export function syncSettingsSidebarBridge() {
   }
 
   hideProfileSection()
+  hideSettingsTopbarBreadcrumb()
   void ensureChrome(aside).then(() => {
     decorateNavLinks(aside)
     applyNavSearchFilter(aside)
@@ -351,7 +413,8 @@ export function installSettingsSidebarBridge() {
 
       return (
         !target.closest(`#${CHROME_ID}`) &&
-        !target.hasAttribute("data-skrepay-settings-nav-icon")
+        !target.hasAttribute("data-skrepay-settings-nav-icon") &&
+        !target.hasAttribute(HIDDEN_BREADCRUMB)
       )
     })
 

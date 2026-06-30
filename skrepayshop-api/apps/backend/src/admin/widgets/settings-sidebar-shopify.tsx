@@ -65,6 +65,10 @@ const shopifySettingsSidebarStyles = `
   body[${BODY_FLAG}] div.h-screen.border-e {
     width: 260px !important;
   }
+
+  body[${BODY_FLAG}] main > div > div.border-b > :nth-child(2) {
+    display: none !important;
+  }
 `
 
 const SettingsSidebarShopify = () => {
