@@ -1,5 +1,6 @@
 import {
   applyStoreEditUi,
+  centerStoreEditDrawer,
   clearStoreEditUi,
   resetLocalCurrencyTaxCache,
 } from "./store-edit-ui"
@@ -66,5 +67,7 @@ export function installStoreEditUiBridge() {
   storeEditObserver.observe(document.body, {
     childList: true,
     subtree: true,
+    attributes: true,
+    attributeFilter: ["data-state", "class"],
   })
 }
