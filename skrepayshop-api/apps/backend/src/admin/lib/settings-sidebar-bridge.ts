@@ -3,8 +3,8 @@ import {
   SKREPAY_ROUTE_CHANGE_EVENT,
 } from "./region-routes"
 import { getSettingsNavIconPath } from "./settings-sidebar-routes"
-
-const BODY_FLAG = "data-skrepay-shopify-settings-nav"
+import { SETTINGS_SHELL_FLAG } from "./settings-shopify-skin-styles"
+import { syncSettingsShopifySkin } from "./settings-shopify-skin"
 const CHROME_ID = "skrepay-settings-sidebar-chrome"
 const HIDDEN_PROFILE = "data-skrepay-profile-hidden"
 const PROFILE_PATH = /\/settings\/profile(?:\/|$)/
@@ -281,14 +281,15 @@ export function syncSettingsSidebarBridge() {
   }
 
   if (!isSettingsPage(window.location.pathname)) {
-    document.body.removeAttribute(BODY_FLAG)
+    document.body.removeAttribute(SETTINGS_SHELL_FLAG)
     removeChrome()
     clearPreviouslyHiddenSections()
     return
   }
 
   redirectProfileRoute()
-  document.body.setAttribute(BODY_FLAG, "true")
+  document.body.setAttribute(SETTINGS_SHELL_FLAG, "true")
+  syncSettingsShopifySkin()
 
   const aside = findSettingsAside()
 

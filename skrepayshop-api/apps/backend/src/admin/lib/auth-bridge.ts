@@ -6,6 +6,7 @@ import { readLocalCurrencyTaxCheckbox } from "./store-edit-ui"
 import { formatRegionFormCurrencyOptions } from "./region-form-ui"
 import { isProductPricingPage, isRegionFormPage, isStoreEditPage, notifyRouteChange } from "./region-routes"
 import { installSettingsSidebarBridge } from "./settings-sidebar-bridge"
+import { installSettingsShopifySkin } from "./settings-shopify-skin"
 
 declare global {
   interface Window {
@@ -364,5 +365,6 @@ export function installAuthBridge() {
   installProductPricingBridge()
   installRegionFormUiBridge()
   installStoreEditUiBridge()
+  installSettingsShopifySkin()
   installSettingsSidebarBridge()
 }
