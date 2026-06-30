@@ -5,6 +5,7 @@ import {
   BuildingStorefront,
   ChevronRightMini,
   MapPin,
+  TruckFast,
 } from "@medusajs/icons"
 import { useQuery } from "@tanstack/react-query"
 import { StoreAddressModal } from "./StoreAddressModal"
@@ -18,6 +19,7 @@ import {
   countryFlagEmoji,
   fetchStoreSettingsSnapshot,
   formatPostalAddress,
+  LOCATIONS_PATH,
   resolveCountryCode,
 } from "../../lib/store-settings-api"
 
@@ -238,6 +240,27 @@ export function StoreSettingsShopifyPage() {
                   Configura una ubicación predeterminada para mostrar la dirección
                 </Text>
               )}
+            </div>
+          </SettingsRow>
+        </SettingsCard>
+      </SectionBlock>
+
+      <SectionBlock
+        title="Ubicación y envío"
+        description="Gestiona almacenes, perfiles de envío y opciones de entrega según Medusa"
+      >
+        <SettingsCard>
+          <SettingsRow href={LOCATIONS_PATH}>
+            <TruckFast className="text-ui-fg-muted shrink-0" />
+            <div className="min-w-0">
+              <Text size="small" weight="plus">
+                Ubicaciones y envío
+              </Text>
+              <Text size="small" className="text-ui-fg-subtle mt-0.5">
+                {location?.name
+                  ? `Ubicación predeterminada: ${location.name}`
+                  : "Configura una ubicación de stock y opciones de envío"}
+              </Text>
             </div>
           </SettingsRow>
         </SettingsCard>

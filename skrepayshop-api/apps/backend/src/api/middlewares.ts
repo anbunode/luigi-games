@@ -19,6 +19,12 @@ import {
   tenantAdminStoresShim,
   tenantAdminUsersMeShim,
 } from "../lib/tenant-admin-shim"
+import {
+  tenantAdminStockLocationByIdGetShim,
+  tenantAdminStockLocationByIdPostShim,
+  tenantAdminStockLocationsListShim,
+  tenantAdminStockLocationsPostShim,
+} from "../lib/tenant-stock-locations-shim"
 
 export default defineMiddlewares({
   routes: [
@@ -80,6 +86,26 @@ export default defineMiddlewares({
       method: "GET",
       matcher: "/admin/sales-channels/:id",
       middlewares: [tenantAdminSalesChannelByIdGetShim],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/stock-locations",
+      middlewares: [tenantAdminStockLocationsListShim],
+    },
+    {
+      method: "POST",
+      matcher: "/admin/stock-locations",
+      middlewares: [tenantAdminStockLocationsPostShim],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/stock-locations/:id",
+      middlewares: [tenantAdminStockLocationByIdGetShim],
+    },
+    {
+      method: "POST",
+      matcher: "/admin/stock-locations/:id",
+      middlewares: [tenantAdminStockLocationByIdPostShim],
     },
     {
       method: "POST",

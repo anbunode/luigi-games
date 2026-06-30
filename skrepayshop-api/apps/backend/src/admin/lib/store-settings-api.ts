@@ -55,8 +55,9 @@ export type StoreSettingsSnapshot = {
 
 const STORE_EDIT_PATH = "/app/settings/store/edit"
 const REGIONS_PATH = "/app/settings/regions"
+const LOCATIONS_PATH = "/app/settings/locations"
 
-export { STORE_EDIT_PATH, REGIONS_PATH }
+export { STORE_EDIT_PATH, REGIONS_PATH, LOCATIONS_PATH }
 
 export async function fetchStoreSettingsSnapshot(): Promise<StoreSettingsSnapshot> {
   const storesBody = await adminFetch<{ stores: StoreSettingsStore[] }>(
