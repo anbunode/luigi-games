@@ -1,4 +1,4 @@
-import { Badge, Heading, IconButton, Text } from "@medusajs/ui"
+import { Heading, IconButton, Text } from "@medusajs/ui"
 import type { ReactNode } from "react"
 import {
   BuildingStorefront,
@@ -7,12 +7,12 @@ import {
   MapPin,
 } from "@medusajs/icons"
 import { useQuery } from "@tanstack/react-query"
+import { StoreDefaultCurrencySelect } from "./StoreDefaultCurrencySelect"
 import {
   STORE_EDIT_PATH,
   REGIONS_PATH,
   countryFlagEmoji,
   fetchStoreSettingsSnapshot,
-  formatCurrencyLabel,
   formatPostalAddress,
   resolveCountryCode,
 } from "../../lib/store-settings-api"
@@ -240,7 +240,15 @@ export function StoreSettingsShopifyPage() {
 
       <SectionBlock title="Valores predeterminados de la tienda">
         <SettingsCard>
-          <SettingsRow trailing={<EditMenuButton />}>
+          <SettingsRow
+            trailing={
+              <StoreDefaultCurrencySelect
+                storeId={store.id}
+                value={defaultCurrencyCode}
+                currencies={store.supported_currencies ?? []}
+              />
+            }
+          >
             <div className="min-w-0 flex-1">
               <Text size="small" weight="plus">
                 Visualización de la moneda
@@ -256,9 +264,6 @@ export function StoreSettingsShopifyPage() {
                 .
               </Text>
             </div>
-            <Badge size="small" rounded="full" color="grey">
-              {formatCurrencyLabel(defaultCurrencyCode)}
-            </Badge>
           </SettingsRow>
         </SettingsCard>
       </SectionBlock>

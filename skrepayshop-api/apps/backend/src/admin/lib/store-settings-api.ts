@@ -186,3 +186,40 @@ export function resolveCountryCode(
     null
   )
 }
+
+export type StoreCurrencyOption = {
+  currency_code: string
+  is_default?: boolean
+  is_tax_inclusive?: boolean
+}
+
+export async function updateStoreDefaultCurrency(
+  storeId: string,
+  currencies: StoreCurrencyOption[],
+  newDefaultCode: string
+): Promise<StoreSettingsStore> {
+  const normalized = newDefaultCode.toLowerCase()
+
+  const taxState = await adminFetch<{
+    enabled: boolean
+  }>("/admin/skrepay/store-local-currency-tax")
+
+  const supported_currencies = currencies.map((row) => ({
+    currency_code: row.currency_code,
+    is_default: row.currency_code.toLowerCase() === normalized,
+    is_tax_inclusive:
+      row.currency_code.toLowerCase() === normalized
+        ? taxState.enabled === true
+        : false,
+  }))
+
+  const body = await adminFetch<{ store: StoreSettingsStore }>(
+    `/admin/stores/${storeId}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ supported_currencies }),
+    }
+  )
+
+  return body.store
+}

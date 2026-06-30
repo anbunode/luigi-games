@@ -117,12 +117,20 @@ function isAdminStoreByIdPost(method: string, url: string): boolean {
 function patchStoreUpdateWithLocalCurrencyTax(
   body: Record<string, unknown>
 ): Record<string, unknown> {
-  const enabled = readLocalCurrencyTaxCheckbox()
   const list = body.supported_currencies
 
   if (!Array.isArray(list)) {
     return body
   }
+
+  const taxSwitch = document.getElementById("skrepay-local-currency-tax-switch")
+  const onStoreEditPage = isStoreEditPage(window.location.pathname)
+
+  if (!onStoreEditPage && !(taxSwitch instanceof HTMLButtonElement)) {
+    return body
+  }
+
+  const enabled = readLocalCurrencyTaxCheckbox()
 
   const defaultEntry = list.find(
     (row) =>
