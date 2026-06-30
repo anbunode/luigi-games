@@ -9,6 +9,7 @@ import { getPlatformPool } from "./platform-db"
 import {
   ensureAllStoreCurrenciesWithTaxExclusive,
   formatStoreCurrenciesForRegionForm,
+  loadStoreDefaultCurrencyCode,
   loadStoreEnabledCurrenciesForAdmin,
   loadMasterCurrencyCatalog,
   loadMasterCurrencyCatalogForAdmin,
@@ -323,7 +324,20 @@ export async function tenantAdminStoreByIdPostShim(
     }
 
     if (body.supported_currencies !== undefined) {
-      await ensureAllStoreCurrenciesWithTaxExclusive(schema, id)
+      const defaultCode =
+        body.supported_currencies
+          .find((entry) => entry.is_default)
+          ?.currency_code?.toLowerCase() ??
+        (await loadStoreDefaultCurrencyCode(schema, id))
+
+      const taxEntry = body.supported_currencies.find(
+        (entry) => entry.currency_code.toLowerCase() === defaultCode
+      )
+
+      await ensureAllStoreCurrenciesWithTaxExclusive(schema, id, {
+        defaultCode,
+        defaultTaxInclusive: taxEntry?.is_tax_inclusive === true,
+      })
     }
 
     const updatedRows = await loadStoreRows(schema, id)

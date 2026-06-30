@@ -877,13 +877,58 @@ export async function syncStoreSupportedCurrencies(
   }
 }
 
+export async function loadStoreDefaultCurrencyCode(
+  schema: string,
+  storeId: string
+): Promise<string> {
+  const schemaQ = quoteIdent(schema)
+  const result = await getPlatformPool().query<{ currency_code: string }>(
+    `select lower(currency_code) as currency_code
+     from ${schemaQ}.store_currency
+     where store_id = $1 and deleted_at is null and is_default = true
+     limit 1`,
+    [storeId]
+  )
+
+  return result.rows[0]?.currency_code ?? "usd"
+}
+
+export async function isDefaultCurrencyTaxInclusive(
+  schema: string,
+  storeId: string,
+  currencyCode?: string
+): Promise<boolean> {
+  const schemaQ = quoteIdent(schema)
+  const code = (
+    currencyCode ?? (await loadStoreDefaultCurrencyCode(schema, storeId))
+  ).toLowerCase()
+
+  const result = await getPlatformPool().query<{ is_tax_inclusive: boolean }>(
+    `select is_tax_inclusive
+     from ${schemaQ}.price_preference
+     where deleted_at is null
+       and attribute = 'currency_code'
+       and lower(value) = $1
+     limit 1`,
+    [code]
+  )
+
+  return result.rows[0]?.is_tax_inclusive ?? false
+}
+
+type EnsureStoreCurrenciesOptions = {
+  defaultCode?: string
+  defaultTaxInclusive?: boolean
+}
+
 /**
- * Habilita todas las monedas del catálogo en la tienda con impuestos incluidos apagados.
- * La moneda por defecto actual de la tienda se conserva.
+ * Habilita todas las monedas del catálogo en la tienda.
+ * Solo la moneda por defecto puede tener impuestos (price_preference.is_tax_inclusive).
  */
 export async function ensureAllStoreCurrenciesWithTaxExclusive(
   schema: string,
-  storeId: string
+  storeId: string,
+  options?: EnsureStoreCurrenciesOptions
 ): Promise<void> {
   const schemaQ = quoteIdent(schema)
   const pool = getPlatformPool()
@@ -896,21 +941,19 @@ export async function ensureAllStoreCurrenciesWithTaxExclusive(
     return
   }
 
-  const defaultRow = await pool.query<{ currency_code: string }>(
-    `select lower(currency_code) as currency_code
-     from ${schemaQ}.store_currency
-     where store_id = $1 and deleted_at is null and is_default = true
-     limit 1`,
-    [storeId]
-  )
-
   const defaultCode =
-    defaultRow.rows[0]?.currency_code ?? catalog.rows[0].code.toLowerCase()
+    options?.defaultCode?.toLowerCase() ??
+    (await loadStoreDefaultCurrencyCode(schema, storeId))
+
+  const defaultTaxInclusive =
+    options?.defaultTaxInclusive ??
+    (await isDefaultCurrencyTaxInclusive(schema, storeId, defaultCode))
 
   const currencies: StoreCurrencyInput[] = catalog.rows.map((row) => ({
     currency_code: row.code.toLowerCase(),
     is_default: row.code.toLowerCase() === defaultCode,
-    is_tax_inclusive: false,
+    is_tax_inclusive:
+      row.code.toLowerCase() === defaultCode ? defaultTaxInclusive : false,
   }))
 
   if (!currencies.some((entry) => entry.is_default)) {

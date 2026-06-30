@@ -1,8 +1,10 @@
 import { getPlatformLoginUrl } from "./platform-url"
 import { installProductPricingBridge } from "./product-pricing-bridge"
 import { installRegionFormUiBridge } from "./region-form-bridge"
+import { installStoreEditUiBridge } from "./store-edit-bridge"
+import { readLocalCurrencyTaxCheckbox } from "./store-edit-ui"
 import { formatRegionFormCurrencyOptions } from "./region-form-ui"
-import { isProductPricingPage, isRegionFormPage, notifyRouteChange } from "./region-routes"
+import { isProductPricingPage, isRegionFormPage, isStoreEditPage, notifyRouteChange } from "./region-routes"
 
 declare global {
   interface Window {
@@ -99,6 +101,96 @@ type StoreCurrencyRow = {
   is_default?: boolean
 }
 
+function isAdminStoreByIdPost(method: string, url: string): boolean {
+  if (method !== "POST") {
+    return false
+  }
+
+  try {
+    const parsed = new URL(url, window.location.origin)
+    return /^\/admin\/stores\/[^/]+\/?$/.test(parsed.pathname)
+  } catch {
+    return /\/admin\/stores\/[^/]+/.test(url) && !url.includes("/admin/stores?")
+  }
+}
+
+function patchStoreUpdateWithLocalCurrencyTax(
+  body: Record<string, unknown>
+): Record<string, unknown> {
+  const enabled = readLocalCurrencyTaxCheckbox()
+  const list = body.supported_currencies
+
+  if (!Array.isArray(list)) {
+    return body
+  }
+
+  const defaultEntry = list.find(
+    (row) =>
+      row &&
+      typeof row === "object" &&
+      (row as { is_default?: boolean }).is_default
+  ) as { currency_code?: string } | undefined
+
+  const defaultCode = defaultEntry?.currency_code?.toLowerCase()
+  if (!defaultCode) {
+    return body
+  }
+
+  return {
+    ...body,
+    supported_currencies: list.map((row) => {
+      if (!row || typeof row !== "object") {
+        return row
+      }
+
+      const entry = row as Record<string, unknown>
+      const code = String(entry.currency_code ?? "").toLowerCase()
+
+      return {
+        ...entry,
+        is_tax_inclusive: code === defaultCode ? enabled : false,
+      }
+    }),
+  }
+}
+
+async function patchStoreUpdateRequest(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  originalFetch: typeof fetch
+): Promise<Response> {
+  const request =
+    input instanceof Request ? input : new Request(input, init)
+
+  const bodyText = await request.clone().text()
+  if (!bodyText) {
+    return originalFetch(input, init)
+  }
+
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(bodyText) as Record<string, unknown>
+  } catch {
+    return originalFetch(input, init)
+  }
+
+  const patched = patchStoreUpdateWithLocalCurrencyTax(parsed)
+  const headers = new Headers(request.headers)
+  headers.set("Content-Type", "application/json")
+
+  return originalFetch(request.url, {
+    method: request.method,
+    headers,
+    body: JSON.stringify(patched),
+    credentials: request.credentials,
+    mode: request.mode,
+    cache: request.cache,
+    redirect: request.redirect,
+    referrer: request.referrer,
+    integrity: request.integrity,
+  })
+}
+
 function reorderStoreCurrenciesDefaultFirst(
   store: Record<string, unknown>
 ): Record<string, unknown> {
@@ -170,7 +262,9 @@ export function installAuthBridge() {
   const originalFetch = window.fetch.bind(window)
 
   window.fetch = async (input, init) => {
-    const method = (init?.method || "GET").toUpperCase()
+    const method = (
+      init?.method ?? (input instanceof Request ? input.method : "GET")
+    ).toUpperCase()
     const url =
       typeof input === "string"
         ? input
@@ -184,6 +278,13 @@ export function installAuthBridge() {
         status: 200,
         headers: { "Content-Type": "application/json" },
       })
+    }
+
+    if (
+      isStoreEditPage(window.location.pathname) &&
+      isAdminStoreByIdPost(method, url)
+    ) {
+      return patchStoreUpdateRequest(input, init, originalFetch)
     }
 
     if (
@@ -253,4 +354,5 @@ export function installAuthBridge() {
 
   installProductPricingBridge()
   installRegionFormUiBridge()
+  installStoreEditUiBridge()
 }

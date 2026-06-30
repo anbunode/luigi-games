@@ -29,6 +29,11 @@ export function isStoreCurrencyManagementPage(pathname: string): boolean {
   )
 }
 
+/** Tienda → editar */
+export function isStoreEditPage(pathname: string): boolean {
+  return /\/settings\/store\/edit\/?$/.test(normalizeAdminPathname(pathname))
+}
+
 /** Crear/editar producto o tabla de precios de variantes */
 export function isProductPricingPage(pathname: string): boolean {
   const path = normalizeAdminPathname(pathname)
