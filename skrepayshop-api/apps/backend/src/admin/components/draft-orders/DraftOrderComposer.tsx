@@ -63,14 +63,14 @@ function Panel({
   children: ReactNode
 }) {
   return (
-    <section className="bg-ui-bg-base overflow-hidden rounded-xl border shadow-borders-base">
-      <div className="flex items-center justify-between border-b px-4 py-3">
+    <section className="bg-ui-bg-base min-w-0 overflow-hidden rounded-xl border shadow-borders-base">
+      <div className="flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <Heading level="h2" className="text-base font-semibold">
           {title}
         </Heading>
-        {action}
+        {action ? <div className="flex min-w-0 flex-wrap gap-2">{action}</div> : null}
       </div>
-      <div className="p-4">{children}</div>
+      <div className="min-w-0 p-4">{children}</div>
     </section>
   )
 }
@@ -83,13 +83,13 @@ function SidebarPanel({
   children: ReactNode
 }) {
   return (
-    <section className="bg-ui-bg-base overflow-hidden rounded-xl border shadow-borders-base">
+    <section className="bg-ui-bg-base min-w-0 overflow-hidden rounded-xl border shadow-borders-base">
       <div className="border-b px-4 py-3">
         <Heading level="h3" className="text-sm font-semibold">
           {title}
         </Heading>
       </div>
-      <div className="p-4">{children}</div>
+      <div className="min-w-0 p-4">{children}</div>
     </section>
   )
 }
@@ -108,7 +108,7 @@ function PaymentRow({
   bold?: boolean
 }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-4 gap-y-1 py-1.5 text-sm">
+    <div className="border-ui-border-base flex flex-col gap-1 border-b py-3 text-sm last:border-b-0 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-x-4 sm:gap-y-1 sm:border-b-0 sm:py-1.5">
       <div className="min-w-0">
         {onClick ? (
           <button
@@ -123,9 +123,16 @@ function PaymentRow({
             {label}
           </Text>
         )}
+        {hint ? (
+          <div className="text-ui-fg-muted mt-0.5 text-xs sm:hidden">{hint}</div>
+        ) : null}
       </div>
-      <div className="text-ui-fg-muted text-right text-xs">{hint ?? "—"}</div>
-      <Text className={`text-right ${bold ? "font-semibold" : ""}`}>{value}</Text>
+      <div className="hidden text-ui-fg-muted text-right text-xs sm:block">
+        {hint ?? "—"}
+      </div>
+      <div className="flex items-center justify-end sm:text-right">
+        <Text className={`break-words ${bold ? "font-semibold" : ""}`}>{value}</Text>
+      </div>
     </div>
   )
 }
@@ -154,6 +161,7 @@ const DraftOrderComposer = ({
   const [customQuantity, setCustomQuantity] = useState("1")
   const [customWeight, setCustomWeight] = useState("")
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const metadataHydratedRef = useRef(false)
 
   const draftId = activeDraftId ?? initialDraftId
 
@@ -248,6 +256,7 @@ const DraftOrderComposer = ({
 
   useEffect(() => {
     if (!draft) {
+      metadataHydratedRef.current = false
       return
     }
 
@@ -261,6 +270,7 @@ const DraftOrderComposer = ({
     setCustomerId(draft.customer_id ?? draft.customer?.id ?? "")
     setGuestEmail(draft.email ?? "")
     setPayLater(metadata.pay_later === true)
+    metadataHydratedRef.current = true
   }, [draft?.id, draft?.metadata, draft?.customer_id, draft?.customer?.id, draft?.email])
 
   const invalidate = () => {
@@ -350,7 +360,7 @@ const DraftOrderComposer = ({
   }
 
   useEffect(() => {
-    if (!draftId) {
+    if (!draftId || !metadataHydratedRef.current) {
       return
     }
 
@@ -466,7 +476,7 @@ const DraftOrderComposer = ({
       return convertDraftOrderToOrder(id)
     },
     onSuccess: (result) => {
-      toast.success("Pedido creado correctamente")
+      toast.success("Borrador convertido en pedido")
       const orderId = result.order?.id
       if (orderId) {
         window.location.assign(`/app/orders/${orderId}`)
@@ -593,15 +603,15 @@ const DraftOrderComposer = ({
     : `Borrador #${draft?.display_id ?? "—"}`
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Heading>{pageTitle}</Heading>
-          <Text size="small" className="text-ui-fg-subtle">
+    <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 overflow-x-hidden px-3 py-4 sm:px-4 md:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <Heading className="break-words">{pageTitle}</Heading>
+          <Text size="small" className="text-ui-fg-subtle break-words">
             {selectedRegion?.name ?? "Selecciona región"} · {currency.toUpperCase()}
           </Text>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
           <Button size="small" variant="secondary" asChild>
             <a href="/app/draft-orders">Volver al listado</a>
           </Button>
@@ -627,10 +637,11 @@ const DraftOrderComposer = ({
           <Panel
             title="Productos"
             action={
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
                 <Button
                   size="small"
                   variant="secondary"
+                  className="w-full sm:w-auto"
                   onClick={() => setProductModalOpen(true)}
                 >
                   <Plus className="mr-1" />
@@ -639,10 +650,11 @@ const DraftOrderComposer = ({
                 <Button
                   size="small"
                   variant="secondary"
+                  className="w-full sm:w-auto"
                   onClick={() => setCustomModalOpen(true)}
                 >
                   <Plus className="mr-1" />
-                  Agregar artículo personalizado
+                  Artículo personalizado
                 </Button>
               </div>
             }
@@ -660,9 +672,9 @@ const DraftOrderComposer = ({
                   return (
                   <div
                     key={item.id}
-                    className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0"
+                    className="grid grid-cols-[3rem_minmax(0,1fr)] gap-x-3 gap-y-2 py-3 first:pt-0 last:pb-0 sm:flex sm:flex-wrap sm:items-center sm:gap-3"
                   >
-                    <div className="bg-ui-bg-subtle flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border">
+                    <div className="bg-ui-bg-subtle row-span-2 flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border sm:row-span-1">
                       {item.thumbnail ? (
                         <img
                           src={item.thumbnail}
@@ -683,33 +695,36 @@ const DraftOrderComposer = ({
                         {formatMoney(item.unit_price, currency)}
                       </Text>
                     </div>
-                    <Input
-                      type="number"
-                      min={1}
-                      className="w-20"
-                      value={quantity}
-                      onChange={(event) => {
-                        const nextQuantity = Number(event.target.value)
-                        if (nextQuantity > 0 && draftId) {
-                          updateItemMutation.mutate({
-                            itemId: item.id,
-                            quantity: nextQuantity,
-                          })
-                        }
-                      }}
-                    />
-                    <Text weight="plus" className="min-w-[88px] text-right">
-                      {formatMoney(lineTotal, currency)}
-                    </Text>
-                    <IconButton
-                      size="small"
-                      variant="transparent"
-                      type="button"
-                      isLoading={removeItemMutation.isPending}
-                      onClick={() => removeItemMutation.mutate(item.id)}
-                    >
-                      <XMark />
-                    </IconButton>
+                    <div className="col-span-2 flex min-w-0 items-center justify-between gap-2 sm:col-span-1 sm:contents">
+                      <Input
+                        type="number"
+                        min={1}
+                        className="w-16 shrink-0 sm:w-20"
+                        value={quantity}
+                        onChange={(event) => {
+                          const nextQuantity = Number(event.target.value)
+                          if (nextQuantity > 0 && draftId) {
+                            updateItemMutation.mutate({
+                              itemId: item.id,
+                              quantity: nextQuantity,
+                            })
+                          }
+                        }}
+                      />
+                      <Text weight="plus" className="min-w-0 shrink-0 text-right sm:min-w-[88px]">
+                        {formatMoney(lineTotal, currency)}
+                      </Text>
+                      <IconButton
+                        size="small"
+                        variant="transparent"
+                        type="button"
+                        className="shrink-0"
+                        isLoading={removeItemMutation.isPending}
+                        onClick={() => removeItemMutation.mutate(item.id)}
+                      >
+                        <XMark />
+                      </IconButton>
+                    </div>
                   </div>
                   )
                 })}
@@ -759,11 +774,12 @@ const DraftOrderComposer = ({
               <span>Pago con vencimiento posterior</span>
             </label>
 
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
               <Button
                 size="small"
                 variant="secondary"
                 type="button"
+                className="w-full sm:w-auto"
                 onClick={() => stubAction("Enviar factura")}
               >
                 Enviar factura
@@ -771,10 +787,11 @@ const DraftOrderComposer = ({
               <Button
                 size="small"
                 type="button"
+                className="w-full sm:w-auto"
                 isLoading={convertMutation.isPending}
                 onClick={() => convertMutation.mutate()}
               >
-                Marcar como pagado
+                Convertir en pedido
               </Button>
             </div>
           </Panel>
@@ -882,7 +899,7 @@ const DraftOrderComposer = ({
             </SidebarPanel>
           ) : null}
 
-          {!hasCustomers ? (
+          {!customerId ? (
             <SidebarPanel title="Email del cliente">
               <Input
                 type="email"
@@ -919,7 +936,7 @@ const DraftOrderComposer = ({
                     <button
                       key={variant.id}
                       type="button"
-                      className="hover:bg-ui-bg-subtle-hover flex items-center gap-3 rounded-md border px-3 py-2 text-left"
+                      className="hover:bg-ui-bg-subtle-hover flex min-w-0 items-center gap-3 rounded-md border px-3 py-2 text-left"
                       onClick={() => {
                         if (!resolvedPrice) {
                           toast.error(
@@ -951,7 +968,7 @@ const DraftOrderComposer = ({
                           {variant.title ?? "Variante"}
                         </Text>
                       </div>
-                      <Text size="small">
+                      <Text size="small" className="shrink-0">
                         {resolvedPrice
                           ? formatMoney(
                               resolvedPrice.amount,
