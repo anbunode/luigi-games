@@ -1,5 +1,6 @@
 import { Heading, IconButton, Text } from "@medusajs/ui"
 import type { ReactNode } from "react"
+import { useState } from "react"
 import {
   BuildingStorefront,
   ChevronRightMini,
@@ -7,6 +8,8 @@ import {
   MapPin,
 } from "@medusajs/icons"
 import { useQuery } from "@tanstack/react-query"
+import { StoreAddressModal } from "./StoreAddressModal"
+import { StoreContactDetailsModal } from "./StoreContactDetailsModal"
 import { StoreDefaultCurrencySelect } from "./StoreDefaultCurrencySelect"
 import {
   STORE_EDIT_PATH,
@@ -27,34 +30,44 @@ function SettingsCard({ children }: { children: ReactNode }) {
 
 function SettingsRow({
   href,
+  onClick,
   children,
   trailing,
   withDivider = false,
 }: {
   href?: string
+  onClick?: () => void
   children: ReactNode
   trailing?: ReactNode
   withDivider?: boolean
 }) {
   const className = [
-    "flex items-center gap-x-4 px-5 py-4 transition-fg",
+    "flex w-full items-center gap-x-4 px-5 py-4 text-left transition-fg",
     withDivider ? "border-t border-ui-border-base" : "",
-    href ? "hover:bg-ui-bg-base-hover cursor-pointer" : "",
+    href || onClick ? "hover:bg-ui-bg-base-hover cursor-pointer" : "",
   ]
     .filter(Boolean)
     .join(" ")
 
   const content = (
-  <>
+    <>
       {children}
       <div className="ml-auto flex shrink-0 items-center gap-x-2">
         {trailing}
-        {href ? (
+        {href || onClick ? (
           <ChevronRightMini className="text-ui-fg-muted" />
         ) : null}
       </div>
     </>
   )
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={className}>
+        {content}
+      </button>
+    )
+  }
 
   if (href) {
     return (
@@ -109,6 +122,9 @@ function EditMenuButton() {
 }
 
 export function StoreSettingsShopifyPage() {
+  const [contactModalOpen, setContactModalOpen] = useState(false)
+  const [addressModalOpen, setAddressModalOpen] = useState(false)
+
   const snapshotQuery = useQuery({
     queryKey: ["skrepay", "store-settings", "snapshot"],
     queryFn: fetchStoreSettingsSnapshot,
@@ -143,7 +159,7 @@ export function StoreSettingsShopifyPage() {
     )
   }
 
-  const { store, userEmail, phone, location, region, defaultCurrencyCode } =
+  const { store, contactEmail, phone, location, region, defaultCurrencyCode } =
     snapshotQuery.data
 
   const address = formatPostalAddress(location, region)
@@ -151,7 +167,7 @@ export function StoreSettingsShopifyPage() {
   const flag = countryFlagEmoji(countryCode)
   const businessName =
     (store.metadata?.business_name as string | undefined) ?? store.name
-  const contactLine = [userEmail, phone].filter(Boolean).join(" · ")
+  const contactLine = [contactEmail, phone].filter(Boolean).join(" · ")
 
   return (
     <div
@@ -200,7 +216,7 @@ export function StoreSettingsShopifyPage() {
 
       <SectionBlock title="Detalles de contacto de la tienda">
         <SettingsCard>
-          <SettingsRow href={STORE_EDIT_PATH}>
+          <SettingsRow onClick={() => setContactModalOpen(true)}>
             <BuildingStorefront className="text-ui-fg-muted shrink-0" />
             <div className="min-w-0">
               <Text size="small" weight="plus">
@@ -218,7 +234,7 @@ export function StoreSettingsShopifyPage() {
             </div>
           </SettingsRow>
 
-          <SettingsRow href={STORE_EDIT_PATH} withDivider>
+          <SettingsRow onClick={() => setAddressModalOpen(true)} withDivider>
             <MapPin className="text-ui-fg-muted shrink-0" />
             <div className="min-w-0">
               <Text size="small" weight="plus">
@@ -267,6 +283,17 @@ export function StoreSettingsShopifyPage() {
           </SettingsRow>
         </SettingsCard>
       </SectionBlock>
+
+      <StoreContactDetailsModal
+        open={contactModalOpen}
+        onOpenChange={setContactModalOpen}
+        snapshot={snapshotQuery.data}
+      />
+      <StoreAddressModal
+        open={addressModalOpen}
+        onOpenChange={setAddressModalOpen}
+        snapshot={snapshotQuery.data}
+      />
     </div>
   )
 }

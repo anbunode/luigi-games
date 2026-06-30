@@ -45,6 +45,7 @@ export type StoreSettingsUser = {
 export type StoreSettingsSnapshot = {
   store: StoreSettingsStore
   userEmail: string | null
+  contactEmail: string | null
   phone: string | null
   location: StoreSettingsLocation | null
   region: StoreSettingsRegion | null
@@ -101,9 +102,15 @@ export async function fetchStoreSettingsSnapshot(): Promise<StoreSettingsSnapsho
     (user?.metadata?.phone as string | undefined) ??
     null
 
+  const contactEmail =
+    (store.metadata?.contact_email as string | undefined) ??
+    user?.email ??
+    null
+
   return {
     store,
     userEmail: user?.email ?? null,
+    contactEmail,
     phone: metadataPhone,
     location,
     region,
@@ -222,4 +229,134 @@ export async function updateStoreDefaultCurrency(
   )
 
   return body.store
+}
+
+export type StoreContactDetailsInput = {
+  name: string
+  contact_email: string
+  phone: string
+}
+
+export async function updateStoreContactDetails(
+  storeId: string,
+  currentMetadata: Record<string, unknown> | null | undefined,
+  input: StoreContactDetailsInput
+): Promise<StoreSettingsStore> {
+  const metadata = {
+    ...(currentMetadata ?? {}),
+    contact_email: input.contact_email.trim(),
+    phone: input.phone.trim(),
+  }
+
+  const body = await adminFetch<{ store: StoreSettingsStore }>(
+    `/admin/stores/${storeId}`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        name: input.name.trim(),
+        metadata,
+      }),
+    }
+  )
+
+  return body.store
+}
+
+export type StoreAddressInput = {
+  companyName: string
+  address_1: string
+  address_2: string
+  city: string
+  province: string
+  postal_code: string
+  country_code: string
+}
+
+export async function updateStoreLocationAddress(
+  storeId: string,
+  locationId: string | null,
+  input: StoreAddressInput
+): Promise<{
+  location: StoreSettingsLocation
+  store: StoreSettingsStore
+}> {
+  const address = {
+    address_1: input.address_1.trim() || null,
+    address_2: input.address_2.trim() || null,
+    city: input.city.trim() || null,
+    province: input.province.trim() || null,
+    postal_code: input.postal_code.trim() || null,
+    country_code: input.country_code.toLowerCase(),
+  }
+
+  const locationName = input.companyName.trim() || "Tienda"
+
+  if (locationId) {
+    const locationBody = await adminFetch<{
+      stock_location: StoreSettingsLocation
+    }>(`/admin/stock-locations/${locationId}`, {
+      method: "POST",
+      body: JSON.stringify({
+        name: locationName,
+        address,
+      }),
+    })
+
+    const storesBody = await adminFetch<{ stores: StoreSettingsStore[] }>(
+      "/admin/stores"
+    )
+    const store = storesBody.stores?.[0]
+
+    if (!store) {
+      throw new Error("No store found")
+    }
+
+    return {
+      location: locationBody.stock_location,
+      store,
+    }
+  }
+
+  const created = await adminFetch<{ stock_location: StoreSettingsLocation }>(
+    "/admin/stock-locations",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        name: locationName,
+        address,
+      }),
+    }
+  )
+
+  const storeBody = await adminFetch<{ store: StoreSettingsStore }>(
+    `/admin/stores/${storeId}`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        default_location_id: created.stock_location.id,
+      }),
+    }
+  )
+
+  return {
+    location: created.stock_location,
+    store: storeBody.store,
+  }
+}
+
+export function countryDisplayName(
+  iso2: string | null | undefined
+): string | null {
+  if (!iso2) {
+    return null
+  }
+
+  try {
+    return (
+      new Intl.DisplayNames(["es"], { type: "region" }).of(iso2.toUpperCase()) ??
+      iso2.toUpperCase()
+    )
+  } catch {
+    return iso2.toUpperCase()
+  }
 }
