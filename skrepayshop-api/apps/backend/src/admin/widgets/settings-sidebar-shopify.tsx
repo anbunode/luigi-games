@@ -1,6 +1,7 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { useLayoutEffect } from "react"
 import { installSettingsSidebarBridge } from "../lib/settings-sidebar-bridge"
+import { SETTINGS_LOADER_LOGO_URL } from "../lib/settings-loading-logo"
 import { SETTINGS_LOADING_FLAG, SETTINGS_LOADER_ID } from "../lib/settings-loading-overlay"
 
 const BODY_FLAG = "data-skrepay-shopify-settings-nav"
@@ -19,28 +20,27 @@ const shopifySettingsSidebarStyles = `
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: var(--bg-base, #111111);
+    background-color: var(--bg-base);
   }
 
-  #${SETTINGS_LOADER_ID} .skrepay-settings-spinner {
-    width: 2rem;
-    height: 2rem;
-    border-radius: 9999px;
-    border: 2px solid rgba(255, 255, 255, 0.12);
-    border-top-color: rgba(255, 255, 255, 0.88);
-    animation: skrepay-settings-spin 0.8s linear infinite;
+  #${SETTINGS_LOADER_ID} .skrepay-loader-logo {
+    width: min(72vw, 320px);
+    height: auto;
+    animation: skrepay-logo-blink 1.6s ease-in-out infinite;
+    user-select: none;
+    pointer-events: none;
   }
 
-  #${SETTINGS_LOADER_ID} .skrepay-settings-loader-text {
-    margin-top: 1rem;
-    font-size: 0.875rem;
-    line-height: 1.25rem;
-    color: rgba(255, 255, 255, 0.55);
+  #${SETTINGS_LOADER_ID}[data-skrepay-theme="light"] .skrepay-loader-logo {
+    filter: invert(1);
   }
 
-  @keyframes skrepay-settings-spin {
-    to {
-      transform: rotate(360deg);
+  @keyframes skrepay-logo-blink {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.38;
     }
   }
 
@@ -73,6 +73,8 @@ const shopifySettingsSidebarStyles = `
 
 const SettingsSidebarShopify = () => {
   useLayoutEffect(() => {
+    const preloadLogo = new Image()
+    preloadLogo.src = SETTINGS_LOADER_LOGO_URL
     installSettingsSidebarBridge()
   }, [])
 
