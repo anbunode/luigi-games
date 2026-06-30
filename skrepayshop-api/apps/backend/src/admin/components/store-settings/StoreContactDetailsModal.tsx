@@ -1,6 +1,7 @@
 import { Button, FocusModal, Heading, Input, Label, Text, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
+import { StoreSettingsModalHeader } from "./StoreSettingsModalHeader"
 import {
   type StoreSettingsSnapshot,
   updateStoreContactDetails,
@@ -63,9 +64,7 @@ export function StoreContactDetailsModal({
   return (
     <FocusModal open={open} onOpenChange={onOpenChange}>
       <FocusModal.Content className="!max-w-[640px]">
-        <FocusModal.Header>
-          <Heading level="h2">Detalles de contacto de la tienda</Heading>
-        </FocusModal.Header>
+        <StoreSettingsModalHeader title="Detalles de contacto de la tienda" />
         <FocusModal.Body className="flex flex-col gap-y-4 p-6">
           <div className="overflow-hidden rounded-xl border border-ui-border-base bg-ui-bg-base">
             <div className="border-b border-ui-border-base px-5 py-4">

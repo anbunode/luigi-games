@@ -1,7 +1,8 @@
-import { Button, FocusModal, Heading, Input, Label, Text, toast } from "@medusajs/ui"
+import { Button, FocusModal, Input, Label, Text, toast } from "@medusajs/ui"
 import { MagnifyingGlass } from "@medusajs/icons"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
+import { StoreSettingsModalHeader } from "./StoreSettingsModalHeader"
 import {
   countryDisplayName,
   countryFlagEmoji,
@@ -91,14 +92,10 @@ export function StoreAddressModal({
   return (
     <FocusModal open={open} onOpenChange={onOpenChange}>
       <FocusModal.Content className="!max-w-[720px]">
-        <FocusModal.Header>
-          <div>
-            <Heading level="h2">Editar dirección de la tienda</Heading>
-            <Text size="small" className="text-ui-fg-subtle mt-1">
-              Tus clientes pueden ver esta información
-            </Text>
-          </div>
-        </FocusModal.Header>
+        <StoreSettingsModalHeader
+          title="Editar dirección de la tienda"
+          description="Tus clientes pueden ver esta información"
+        />
         <FocusModal.Body className="flex flex-col gap-y-4 p-6">
           <div className="flex flex-col gap-y-2">
             <Label htmlFor="store-address-company">Nombre de la empresa</Label>
