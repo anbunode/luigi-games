@@ -1,6 +1,3 @@
-const STORE_EDIT_BODY_FLAG = "data-skrepay-store-edit"
-const STORE_EDIT_DRAWER_FLAG = "data-skrepay-store-edit-drawer"
-const STORE_EDIT_OVERLAY_FLAG = "data-skrepay-store-edit-overlay"
 const LOCAL_TAX_FIELD_FLAG = "data-skrepay-local-currency-tax"
 const LOCAL_TAX_SWITCH_ID = "skrepay-local-currency-tax-switch"
 
@@ -9,139 +6,11 @@ const DEFAULT_CURRENCY_LABELS = [
   "default currency",
 ]
 
-const STORE_EDIT_STYLES = `
-  body[${STORE_EDIT_BODY_FLAG}] [${STORE_EDIT_DRAWER_FLAG}] {
-    position: fixed !important;
-    left: 50% !important;
-    top: 50% !important;
-    right: auto !important;
-    bottom: auto !important;
-    inset: auto !important;
-    transform: translate(-50%, -50%) !important;
-    width: min(32rem, calc(100vw - 2rem)) !important;
-    max-width: min(32rem, calc(100vw - 2rem)) !important;
-    min-width: min(32rem, calc(100vw - 2rem)) !important;
-    max-height: min(44rem, calc(100vh - 2rem)) !important;
-    height: auto !important;
-    min-height: 24rem !important;
-    margin: 0 !important;
-    animation: none !important;
-    transition: none !important;
-  }
-
-  body[${STORE_EDIT_BODY_FLAG}] [${STORE_EDIT_OVERLAY_FLAG}] {
-    background-color: rgba(0, 0, 0, 0.45) !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-  }
-`
-
 let cachedTaxEnabled: boolean | null = null
-
-function ensureStoreEditStyles() {
-  const id = "skrepay-store-edit-styles"
-  if (document.getElementById(id)) {
-    return
-  }
-
-  const style = document.createElement("style")
-  style.id = id
-  style.textContent = STORE_EDIT_STYLES
-  document.head.appendChild(style)
-}
 
 function matchesDefaultCurrencyLabel(text: string): boolean {
   const normalized = text.trim().toLowerCase()
   return DEFAULT_CURRENCY_LABELS.some((label) => normalized.includes(label))
-}
-
-function isStoreEditDrawer(node: HTMLElement): boolean {
-  const text = node.textContent?.toLowerCase() ?? ""
-
-  return (
-    text.includes("moneda por defecto") ||
-    text.includes("default currency") ||
-    (text.includes("nombre") &&
-      (text.includes("región por defecto") ||
-        text.includes("default region") ||
-        text.includes("canal de ventas") ||
-        text.includes("sales channel")))
-  )
-}
-
-function findStoreEditDrawer(root: ParentNode = document): HTMLElement | null {
-  const taxField = root.querySelector(`[${LOCAL_TAX_FIELD_FLAG}]`)
-  if (taxField instanceof HTMLElement) {
-    const drawer =
-      taxField.closest(".shadow-elevation-modal") ??
-      taxField.closest(".fixed.flex-col.overflow-hidden.rounded-lg")
-
-    if (drawer instanceof HTMLElement) {
-      return drawer
-    }
-  }
-
-  for (const candidate of root.querySelectorAll(".shadow-elevation-modal")) {
-    if (!(candidate instanceof HTMLElement)) {
-      continue
-    }
-
-    if (isStoreEditDrawer(candidate)) {
-      return candidate
-    }
-  }
-
-  return null
-}
-
-function findStoreEditOverlay(drawer: HTMLElement): HTMLElement | null {
-  const parent = drawer.parentElement
-  if (!parent) {
-    return null
-  }
-
-  for (const child of parent.children) {
-    if (!(child instanceof HTMLElement) || child === drawer) {
-      continue
-    }
-
-    if (
-      child.classList.contains("fixed") &&
-      (child.classList.contains("inset-0") ||
-        child.classList.contains("bg-ui-bg-overlay"))
-    ) {
-      return child
-    }
-  }
-
-  return parent.querySelector(".bg-ui-bg-overlay.fixed.inset-0")
-}
-
-export function centerStoreEditDrawer(root: ParentNode = document) {
-  ensureStoreEditStyles()
-
-  root
-    .querySelectorAll(`[${STORE_EDIT_DRAWER_FLAG}]`)
-    .forEach((node) => node.removeAttribute(STORE_EDIT_DRAWER_FLAG))
-
-  root
-    .querySelectorAll(`[${STORE_EDIT_OVERLAY_FLAG}]`)
-    .forEach((node) => node.removeAttribute(STORE_EDIT_OVERLAY_FLAG))
-
-  const drawer = findStoreEditDrawer(root)
-  if (!drawer) {
-    document.body.removeAttribute(STORE_EDIT_BODY_FLAG)
-    return
-  }
-
-  drawer.setAttribute(STORE_EDIT_DRAWER_FLAG, "true")
-
-  const overlay = findStoreEditOverlay(drawer)
-  if (overlay) {
-    overlay.setAttribute(STORE_EDIT_OVERLAY_FLAG, "true")
-  }
-
-  document.body.setAttribute(STORE_EDIT_BODY_FLAG, "true")
 }
 
 function setSwitchState(button: HTMLButtonElement, checked: boolean) {
@@ -256,34 +125,22 @@ export function resetLocalCurrencyTaxCache() {
 }
 
 export async function applyStoreEditUi(root: ParentNode = document) {
-  centerStoreEditDrawer(root)
-
   const defaultCurrencyField = findDefaultCurrencyField(root)
   if (!defaultCurrencyField) {
     return
   }
 
   const existing = root.querySelector(`[${LOCAL_TAX_FIELD_FLAG}]`)
-  if (!existing) {
-    const enabled = await loadLocalCurrencyTaxEnabled()
-    const taxField = createLocalTaxSwitch(enabled)
-    defaultCurrencyField.insertAdjacentElement("afterend", taxField)
+  if (existing) {
+    return
   }
 
-  centerStoreEditDrawer(root)
+  const enabled = await loadLocalCurrencyTaxEnabled()
+  const taxField = createLocalTaxSwitch(enabled)
+  defaultCurrencyField.insertAdjacentElement("afterend", taxField)
 }
 
 export function clearStoreEditUi() {
-  document.body.removeAttribute(STORE_EDIT_BODY_FLAG)
-
-  document
-    .querySelectorAll(`[${STORE_EDIT_DRAWER_FLAG}]`)
-    .forEach((node) => node.removeAttribute(STORE_EDIT_DRAWER_FLAG))
-
-  document
-    .querySelectorAll(`[${STORE_EDIT_OVERLAY_FLAG}]`)
-    .forEach((node) => node.removeAttribute(STORE_EDIT_OVERLAY_FLAG))
-
   resetLocalCurrencyTaxCache()
 
   document
