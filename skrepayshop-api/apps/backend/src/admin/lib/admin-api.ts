@@ -14,8 +14,30 @@ export async function adminFetch<T = unknown>(
 
   if (!response.ok) {
     const message = await response.text()
-    throw new Error(message || `Request failed (${response.status})`)
+    throw new Error(parseAdminErrorMessage(message, response.status))
   }
 
   return response.json() as Promise<T>
+}
+
+function parseAdminErrorMessage(message: string, status: number): string {
+  if (!message) {
+    return `Request failed (${status})`
+  }
+
+  try {
+    const json = JSON.parse(message) as { message?: string; type?: string }
+
+    if (typeof json.message === "string" && json.message.trim()) {
+      return json.message
+    }
+  } catch {
+    // fall through
+  }
+
+  if (message.length > 240) {
+    return `Request failed (${status})`
+  }
+
+  return message
 }

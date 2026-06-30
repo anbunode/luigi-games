@@ -1,9 +1,9 @@
-import { Button, FocusModal, Input, Label, toast } from "@medusajs/ui"
+import { Button, Input, Label, toast } from "@medusajs/ui"
 import { MagnifyingGlass } from "@medusajs/icons"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { StoreCountrySelect } from "./StoreCountrySelect"
-import { StoreSettingsModalHeader } from "./StoreSettingsModalHeader"
+import { StoreSettingsModalShell } from "./StoreSettingsModalShell"
 import {
   type StoreSettingsSnapshot,
   updateStoreLocationAddress,
@@ -90,13 +90,34 @@ export function StoreAddressModal({
   const canSave = address1.trim().length > 0 && city.trim().length > 0
 
   return (
-    <FocusModal open={open} onOpenChange={onOpenChange}>
-      <FocusModal.Content className="!max-w-[720px]">
-        <StoreSettingsModalHeader
-          title="Editar dirección de la tienda"
-          description="Tus clientes pueden ver esta información"
-        />
-        <FocusModal.Body className="flex flex-col gap-y-4 p-6">
+    <StoreSettingsModalShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Editar dirección de la tienda"
+      description="Tus clientes pueden ver esta información"
+      footer={
+        <>
+          <Button
+            type="button"
+            size="small"
+            variant="secondary"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            size="small"
+            disabled={!canSave || mutation.isPending}
+            isLoading={mutation.isPending}
+            onClick={() => mutation.mutate()}
+          >
+            Guardar
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-y-4">
           <div className="flex flex-col gap-y-2">
             <Label htmlFor="store-address-company">Nombre de la empresa</Label>
             <Input
@@ -165,28 +186,7 @@ export function StoreAddressModal({
               />
             </div>
           </div>
-
-          <div className="flex justify-end gap-x-2 pt-2">
-            <Button
-              type="button"
-              size="small"
-              variant="secondary"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              size="small"
-              disabled={!canSave || mutation.isPending}
-              isLoading={mutation.isPending}
-              onClick={() => mutation.mutate()}
-            >
-              Guardar
-            </Button>
-          </div>
-        </FocusModal.Body>
-      </FocusModal.Content>
-    </FocusModal>
+      </div>
+    </StoreSettingsModalShell>
   )
 }

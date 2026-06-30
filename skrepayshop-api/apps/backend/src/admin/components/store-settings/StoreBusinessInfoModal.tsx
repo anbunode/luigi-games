@@ -1,12 +1,4 @@
-import {
-  Button,
-  FocusModal,
-  Heading,
-  Input,
-  Label,
-  Select,
-  toast,
-} from "@medusajs/ui"
+import { Button, Heading, Input, Label, Select, toast } from "@medusajs/ui"
 import { MagnifyingGlass } from "@medusajs/icons"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
@@ -18,7 +10,7 @@ import {
 } from "../../lib/store-settings-api"
 import { StoreCountryFlagSelect } from "./StoreCountryFlagSelect"
 import { StorePhoneInput } from "./StorePhoneInput"
-import { StoreSettingsModalHeader } from "./StoreSettingsModalHeader"
+import { StoreSettingsModalShell } from "./StoreSettingsModalShell"
 
 const BUSINESS_TYPE_OPTIONS = [
   { value: "company", label: "Empresa" },
@@ -147,148 +139,148 @@ export function StoreBusinessInfoModal({
   const canSave = legalName.trim().length > 0
 
   return (
-    <FocusModal open={open} onOpenChange={onOpenChange}>
-      <FocusModal.Content className="!max-w-[720px]">
-        <StoreSettingsModalHeader title="Editar información comercial" />
-        <FocusModal.Body className="flex flex-col gap-y-4 p-6">
-          <div className="overflow-hidden rounded-xl border border-ui-border-base bg-ui-bg-base">
-            <div className="border-b border-ui-border-base px-5 py-4">
-              <Heading level="h3" className="txt-compact-medium-plus">
-                Sobre tu empresa
-              </Heading>
-            </div>
+    <StoreSettingsModalShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Editar información comercial"
+      footer={
+        <>
+          <Button
+            type="button"
+            size="small"
+            variant="secondary"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            size="small"
+            disabled={!canSave || mutation.isPending}
+            isLoading={mutation.isPending}
+            onClick={() => mutation.mutate()}
+          >
+            Guardar
+          </Button>
+        </>
+      }
+    >
+      <div className="overflow-hidden rounded-xl border border-ui-border-base bg-ui-bg-base">
+        <div className="border-b border-ui-border-base px-5 py-4">
+          <Heading level="h3" className="txt-compact-medium-plus">
+            Sobre tu empresa
+          </Heading>
+        </div>
 
-            <div className="flex flex-col gap-y-4 px-5 py-4">
-              <div className="flex flex-col gap-y-2">
-                <Label>¿Qué tipo de empresa tienes?</Label>
-                <div className="flex items-center gap-x-2">
-                  <StoreCountryFlagSelect
-                    value={businessCountry}
-                    disabled={mutation.isPending}
-                    onValueChange={setBusinessCountry}
-                  />
-                  <Select
-                    value={businessType}
-                    disabled={mutation.isPending}
-                    onValueChange={setBusinessType}
-                  >
-                    <Select.Trigger className="flex-1">
-                      <Select.Value />
-                    </Select.Trigger>
-                    <Select.Content>
-                      {BUSINESS_TYPE_OPTIONS.map((option) => (
-                        <Select.Item key={option.value} value={option.value}>
-                          {option.label}
-                        </Select.Item>
-                      ))}
-                    </Select.Content>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-y-2">
-                <Label htmlFor="business-legal-name">Razón social registrada</Label>
-                <Input
-                  id="business-legal-name"
-                  value={legalName}
-                  onChange={(event) => setLegalName(event.target.value)}
-                />
-              </div>
-
-              <div className="flex flex-col gap-y-2">
-                <Label htmlFor="business-alias">Alias</Label>
-                <Input
-                  id="business-alias"
-                  value={alias}
-                  onChange={(event) => setAlias(event.target.value)}
-                />
-              </div>
-
-              <div className="flex flex-col gap-y-2">
-                <Label htmlFor="business-address-line-1">Dirección comercial</Label>
-                <div className="relative">
-                  <MagnifyingGlass className="text-ui-fg-muted pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2" />
-                  <Input
-                    id="business-address-line-1"
-                    className="pl-9"
-                    value={address1}
-                    onChange={(event) => setAddress1(event.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-y-2">
-                <Label htmlFor="business-address-line-2">
-                  Apartamento, local, etc.
-                </Label>
-                <Input
-                  id="business-address-line-2"
-                  value={address2}
-                  onChange={(event) => setAddress2(event.target.value)}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="flex flex-col gap-y-2">
-                  <Label htmlFor="business-city">Ciudad</Label>
-                  <Input
-                    id="business-city"
-                    value={city}
-                    onChange={(event) => setCity(event.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-y-2">
-                  <Label htmlFor="business-postal">Código postal</Label>
-                  <Input
-                    id="business-postal"
-                    value={postalCode}
-                    onChange={(event) => setPostalCode(event.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-y-2">
-                  <Label htmlFor="business-province">Región</Label>
-                  <Input
-                    id="business-province"
-                    value={province}
-                    onChange={(event) => setProvince(event.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-y-2">
-                <Label htmlFor="business-phone">Número de teléfono</Label>
-                <StorePhoneInput
-                  id="business-phone"
-                  value={phone}
-                  defaultCountryCode={phoneDefaultCountry}
-                  disabled={mutation.isPending}
-                  onChange={setPhone}
-                />
-              </div>
+        <div className="flex flex-col gap-y-4 px-5 py-4">
+          <div className="flex flex-col gap-y-2">
+            <Label>¿Qué tipo de empresa tienes?</Label>
+            <div className="flex items-center gap-x-2">
+              <StoreCountryFlagSelect
+                value={businessCountry}
+                disabled={mutation.isPending}
+                onValueChange={setBusinessCountry}
+              />
+              <Select
+                value={businessType}
+                disabled={mutation.isPending}
+                onValueChange={setBusinessType}
+              >
+                <Select.Trigger className="flex-1">
+                  <Select.Value />
+                </Select.Trigger>
+                <Select.Content>
+                  {BUSINESS_TYPE_OPTIONS.map((option) => (
+                    <Select.Item key={option.value} value={option.value}>
+                      {option.label}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
             </div>
           </div>
 
-          <div className="flex justify-end gap-x-2 pt-2">
-            <Button
-              type="button"
-              size="small"
-              variant="secondary"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              size="small"
-              disabled={!canSave || mutation.isPending}
-              isLoading={mutation.isPending}
-              onClick={() => mutation.mutate()}
-            >
-              Guardar
-            </Button>
+          <div className="flex flex-col gap-y-2">
+            <Label htmlFor="business-legal-name">Razón social registrada</Label>
+            <Input
+              id="business-legal-name"
+              value={legalName}
+              onChange={(event) => setLegalName(event.target.value)}
+            />
           </div>
-        </FocusModal.Body>
-      </FocusModal.Content>
-    </FocusModal>
+
+          <div className="flex flex-col gap-y-2">
+            <Label htmlFor="business-alias">Alias</Label>
+            <Input
+              id="business-alias"
+              value={alias}
+              onChange={(event) => setAlias(event.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-y-2">
+            <Label htmlFor="business-address-line-1">Dirección comercial</Label>
+            <div className="relative">
+              <MagnifyingGlass className="text-ui-fg-muted pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2" />
+              <Input
+                id="business-address-line-1"
+                className="pl-9"
+                value={address1}
+                onChange={(event) => setAddress1(event.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-y-2">
+            <Label htmlFor="business-address-line-2">
+              Apartamento, local, etc.
+            </Label>
+            <Input
+              id="business-address-line-2"
+              value={address2}
+              onChange={(event) => setAddress2(event.target.value)}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="flex flex-col gap-y-2">
+              <Label htmlFor="business-city">Ciudad</Label>
+              <Input
+                id="business-city"
+                value={city}
+                onChange={(event) => setCity(event.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-y-2">
+              <Label htmlFor="business-postal">Código postal</Label>
+              <Input
+                id="business-postal"
+                value={postalCode}
+                onChange={(event) => setPostalCode(event.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-y-2">
+              <Label htmlFor="business-province">Región</Label>
+              <Input
+                id="business-province"
+                value={province}
+                onChange={(event) => setProvince(event.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-y-2">
+            <Label htmlFor="business-phone">Número de teléfono</Label>
+            <StorePhoneInput
+              id="business-phone"
+              value={phone}
+              defaultCountryCode={phoneDefaultCountry}
+              disabled={mutation.isPending}
+              onChange={setPhone}
+            />
+          </div>
+        </div>
+      </div>
+    </StoreSettingsModalShell>
   )
 }

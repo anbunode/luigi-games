@@ -1,13 +1,13 @@
-import { Button, FocusModal, Heading, Input, Label, Text, toast } from "@medusajs/ui"
+import { Button, Heading, Input, Label, Text, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { parseInternationalPhone } from "../../lib/phone-country-codes"
-import { StorePhoneInput } from "./StorePhoneInput"
-import { StoreSettingsModalHeader } from "./StoreSettingsModalHeader"
 import {
   type StoreSettingsSnapshot,
   updateStoreContactDetails,
 } from "../../lib/store-settings-api"
+import { StorePhoneInput } from "./StorePhoneInput"
+import { StoreSettingsModalShell } from "./StoreSettingsModalShell"
 
 type StoreContactDetailsModalProps = {
   open: boolean
@@ -64,10 +64,33 @@ export function StoreContactDetailsModal({
   const canSave = name.trim().length > 0
 
   return (
-    <FocusModal open={open} onOpenChange={onOpenChange}>
-      <FocusModal.Content className="!max-w-[640px]">
-        <StoreSettingsModalHeader title="Detalles de contacto de la tienda" />
-        <FocusModal.Body className="flex flex-col gap-y-4 p-6">
+    <StoreSettingsModalShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Detalles de contacto de la tienda"
+      maxWidthClassName="!max-w-[640px]"
+      footer={
+        <>
+          <Button
+            type="button"
+            size="small"
+            variant="secondary"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            size="small"
+            disabled={!canSave || mutation.isPending}
+            isLoading={mutation.isPending}
+            onClick={() => mutation.mutate()}
+          >
+            Guardar
+          </Button>
+        </>
+      }
+    >
           <div className="overflow-hidden rounded-xl border border-ui-border-base bg-ui-bg-base">
             <div className="border-b border-ui-border-base px-5 py-4">
               <Heading level="h3" className="txt-compact-medium-plus">
@@ -124,28 +147,6 @@ export function StoreContactDetailsModal({
               </div>
             </div>
           </div>
-
-          <div className="flex justify-end gap-x-2 pt-2">
-            <Button
-              type="button"
-              size="small"
-              variant="secondary"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              size="small"
-              disabled={!canSave || mutation.isPending}
-              isLoading={mutation.isPending}
-              onClick={() => mutation.mutate()}
-            >
-              Guardar
-            </Button>
-          </div>
-        </FocusModal.Body>
-      </FocusModal.Content>
-    </FocusModal>
+    </StoreSettingsModalShell>
   )
 }

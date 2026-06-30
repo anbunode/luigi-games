@@ -328,15 +328,31 @@ export async function updateStoreBusinessInfo(
     body: JSON.stringify({ metadata }),
   })
 
-  await updateStoreLocationAddress(storeId, locationId, {
-    companyName: input.business_name.trim() || input.business_alias.trim() || "Tienda",
-    address_1: input.address_1,
-    address_2: input.address_2,
-    city: input.city,
-    province: input.province,
-    postal_code: input.postal_code,
-    country_code: input.business_country_code,
-  })
+  const locationName =
+    input.business_name.trim() || input.business_alias.trim() || "Tienda"
+
+  if (input.address_1.trim()) {
+    await updateStoreLocationAddress(storeId, locationId, {
+      companyName: locationName,
+      address_1: input.address_1,
+      address_2: input.address_2,
+      city: input.city,
+      province: input.province,
+      postal_code: input.postal_code,
+      country_code: input.business_country_code,
+    })
+    return
+  }
+
+  if (locationId) {
+    await adminFetch<{ stock_location: StoreSettingsLocation }>(
+      `/admin/stock-locations/${locationId}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ name: locationName }),
+      }
+    )
+  }
 }
 
 export async function updateStoreLocationAddress(
@@ -354,6 +370,7 @@ export async function updateStoreLocationAddress(
     province: input.province.trim() || null,
     postal_code: input.postal_code.trim() || null,
     country_code: input.country_code.toLowerCase(),
+    company: input.companyName.trim() || null,
   }
 
   const locationName = input.companyName.trim() || "Tienda"
