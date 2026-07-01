@@ -25,6 +25,12 @@ import {
   tenantAdminStockLocationsListShim,
   tenantAdminStockLocationsPostShim,
 } from "../lib/tenant-stock-locations-shim"
+import {
+  tenantAdminFulfillmentSetDeleteShim,
+  tenantAdminFulfillmentSetServiceZonesPostShim,
+  tenantAdminStockLocationFulfillmentProvidersPostShim,
+  tenantAdminStockLocationFulfillmentSetsPostShim,
+} from "../lib/tenant-fulfillment-shim"
 
 export default defineMiddlewares({
   routes: [
@@ -106,6 +112,26 @@ export default defineMiddlewares({
       method: "POST",
       matcher: "/admin/stock-locations/:id",
       middlewares: [tenantAdminStockLocationByIdPostShim],
+    },
+    {
+      method: "POST",
+      matcher: "/admin/stock-locations/:id/fulfillment-sets",
+      middlewares: [tenantAdminStockLocationFulfillmentSetsPostShim],
+    },
+    {
+      method: "POST",
+      matcher: "/admin/stock-locations/:id/fulfillment-providers",
+      middlewares: [tenantAdminStockLocationFulfillmentProvidersPostShim],
+    },
+    {
+      method: "DELETE",
+      matcher: "/admin/fulfillment-sets/:id",
+      middlewares: [tenantAdminFulfillmentSetDeleteShim],
+    },
+    {
+      method: "POST",
+      matcher: "/admin/fulfillment-sets/:id/service-zones",
+      middlewares: [tenantAdminFulfillmentSetServiceZonesPostShim],
     },
     {
       method: "POST",
