@@ -44,6 +44,11 @@ const requiredGroups = [
     ],
     min: 1,
   },
+  {
+    label: "draft render patch",
+    needles: ["Could not load draft orders"],
+    min: 1,
+  },
 ]
 
 let failed = false

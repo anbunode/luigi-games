@@ -1,5 +1,6 @@
 import { loadEnv, defineConfig } from "@medusajs/framework/utils"
 import { patchAdminEntryVitePlugin } from "./src/admin/lib/patch-admin-entry"
+import { patchDraftOrderVitePlugin } from "./src/admin/lib/patch-draft-order-vite"
 import { patchRegionCreateCurrencyVitePlugin } from "./src/admin/lib/patch-region-create-currency-vite"
 
 loadEnv(process.env.NODE_ENV || "development", process.cwd())
@@ -33,7 +34,11 @@ module.exports = defineConfig({
           process.env.PLATFORM_URL || "https://skrepay.com"
         ),
       },
-      plugins: [patchAdminEntryVitePlugin(), patchRegionCreateCurrencyVitePlugin()],
+      plugins: [
+        patchAdminEntryVitePlugin(),
+        patchRegionCreateCurrencyVitePlugin(),
+        patchDraftOrderVitePlugin(),
+      ],
     }),
   },
 })

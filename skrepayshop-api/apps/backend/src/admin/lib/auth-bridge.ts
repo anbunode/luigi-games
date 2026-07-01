@@ -271,6 +271,34 @@ export function installAuthBridge() {
   const logoutUrl = getLogoutUrl()
   const originalFetch = window.fetch.bind(window)
 
+  const withAdminCredentials = (
+    input: RequestInfo | URL,
+    init?: RequestInit
+  ): RequestInit | undefined => {
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof Request
+          ? input.url
+          : String(input)
+
+    let isAdminRequest = false
+
+    try {
+      isAdminRequest = new URL(url, window.location.origin).pathname.startsWith(
+        "/admin"
+      )
+    } catch {
+      isAdminRequest = url.includes("/admin/")
+    }
+
+    if (!isAdminRequest || (init && init.credentials !== undefined)) {
+      return init
+    }
+
+    return { ...init, credentials: "include" }
+  }
+
   window.fetch = async (input, init) => {
     const method = (
       init?.method ?? (input instanceof Request ? input.method : "GET")
@@ -307,7 +335,7 @@ export function installAuthBridge() {
         ...init,
         headers,
       }
-      const response = await originalFetch(input, patchedInit)
+      const response = await originalFetch(input, withAdminCredentials(input, patchedInit))
       return patchStoreListWithRegionCatalog(response, originalFetch)
     }
 
@@ -315,11 +343,11 @@ export function installAuthBridge() {
       isProductPricingPage(window.location.pathname) &&
       isAdminStoresRequest(method, url)
     ) {
-      const response = await originalFetch(input, init)
+      const response = await originalFetch(input, withAdminCredentials(input, init))
       return patchStoreListForProductPricing(response)
     }
 
-    const response = await originalFetch(input, init)
+    const response = await originalFetch(input, withAdminCredentials(input, init))
 
     if (
       method === "DELETE" &&
