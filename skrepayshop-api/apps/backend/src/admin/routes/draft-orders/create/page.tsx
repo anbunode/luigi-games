@@ -1,3 +1,5 @@
-import { DraftOrderCreatePage } from "../../../components/draft-orders/DraftOrderCreatePage"
+import { DraftOrdersListPage } from "../../components/draft-orders/DraftOrdersListPage"
 
-export default DraftOrderCreatePage
+export default function DraftOrderCreateRoutePage() {
+  return <DraftOrdersListPage openCreate />
+}

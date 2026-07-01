@@ -174,14 +174,16 @@ export async function fetchDraftStoreDefaults() {
 }
 
 export async function searchDraftCustomers(query: string) {
+  const trimmed = query.trim()
+  if (trimmed.length < 2) {
+    return []
+  }
+
   const params = new URLSearchParams({
     limit: "20",
     fields: "id,email,first_name,last_name,phone",
+    q: trimmed,
   })
-
-  if (query.trim()) {
-    params.set("q", query.trim())
-  }
 
   const data = await adminFetch<{ customers: DraftCustomer[] }>(
     `/admin/customers?${params.toString()}`
