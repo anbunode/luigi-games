@@ -4,6 +4,8 @@ import { OrdersFiltersBar } from "./OrdersFiltersBar"
 import { OrdersKpiCards } from "./OrdersKpiCards"
 import { OrdersShell } from "./OrdersShell"
 import { OrdersTable } from "./OrdersTable"
+import { OrderExportModal } from "./OrderExportModal"
+import { OrdersPagination } from "./OrdersPagination"
 import {
   computeOrderKpis,
   fetchOrders,
@@ -13,64 +15,11 @@ import { installAuthBridge } from "../../lib/auth-bridge"
 import {
   enableSkrepayTheme,
   skrepayColors,
-  skrepayRadius,
   skrepayThemeCss,
 } from "../../lib/skrepay-theme"
+import { SkrepayButton } from "./OrdersUi"
 
-function SkrepayButton({
-  children,
-  variant = "primary",
-  href,
-  onClick,
-}: {
-  children: React.ReactNode
-  variant?: "primary" | "ghost"
-  href?: string
-  onClick?: () => void
-}) {
-  const base: React.CSSProperties = {
-    borderRadius: skrepayRadius.sm,
-    padding: "10px 14px",
-    fontSize: "13px",
-    fontWeight: 600,
-    lineHeight: 1,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "8px",
-    textDecoration: "none",
-    cursor: "pointer",
-    border: "1px solid transparent",
-  }
-
-  const styles: React.CSSProperties =
-    variant === "primary"
-      ? {
-          ...base,
-          background: `linear-gradient(180deg, ${skrepayColors.accent} 0%, ${skrepayColors.accentStrong} 100%)`,
-          color: "#0f1410",
-          boxShadow: `0 0 0 1px ${skrepayColors.accentGlow}`,
-        }
-      : {
-          ...base,
-          background: skrepayColors.surface,
-          color: skrepayColors.text,
-          borderColor: skrepayColors.border,
-        }
-
-  if (href) {
-    return (
-      <a href={href} style={styles}>
-        {children}
-      </a>
-    )
-  }
-
-  return (
-    <button type="button" onClick={onClick} style={styles}>
-      {children}
-    </button>
-  )
-}
+const PAGE_SIZE = 20
 
 export function OrdersListPage() {
   useLayoutEffect(() => {
@@ -82,11 +31,17 @@ export function OrdersListPage() {
   const [paymentStatus, setPaymentStatus] = useState("all")
   const [fulfillmentStatus, setFulfillmentStatus] = useState("all")
   const [debouncedQuery, setDebouncedQuery] = useState("")
+  const [page, setPage] = useState(0)
+  const [exportOpen, setExportOpen] = useState(false)
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQuery(query), 300)
     return () => window.clearTimeout(timer)
   }, [query])
+
+  useEffect(() => {
+    setPage(0)
+  }, [debouncedQuery, paymentStatus, fulfillmentStatus])
 
   const ordersQuery = useQuery({
     queryKey: [
@@ -96,23 +51,29 @@ export function OrdersListPage() {
       debouncedQuery,
       paymentStatus,
       fulfillmentStatus,
+      page,
     ],
     queryFn: () =>
       fetchOrders({
         q: debouncedQuery || undefined,
         payment_status: paymentStatus,
         fulfillment_status: fulfillmentStatus,
-        limit: 50,
+        limit: PAGE_SIZE,
+        offset: page * PAGE_SIZE,
       }),
     retry: 1,
   })
 
   const orders = ordersQuery.data?.orders ?? []
-  const kpis = useMemo(() => computeOrderKpis(orders), [orders])
-  const subtitle = `${kpis.totalOrders} pedidos en vista · ${formatOrderMoney(
+  const totalCount = ordersQuery.data?.count ?? 0
+  const kpis = useMemo(
+    () => computeOrderKpis(orders, totalCount),
+    [orders, totalCount]
+  )
+  const subtitle = `${totalCount} pedidos · ${formatOrderMoney(
     kpis.totalRevenue,
     kpis.primaryCurrency
-  )} en total`
+  )} en esta página`
 
   return (
     <>
@@ -122,7 +83,7 @@ export function OrdersListPage() {
         subtitle={subtitle}
         actions={
           <>
-            <SkrepayButton variant="ghost" href="/app/orders/export">
+            <SkrepayButton variant="ghost" onClick={() => setExportOpen(true)}>
               Exportar
             </SkrepayButton>
             <SkrepayButton variant="primary" href="/app/draft-orders/create">
@@ -131,7 +92,7 @@ export function OrdersListPage() {
           </>
         }
       >
-        <OrdersKpiCards orders={orders} />
+        <OrdersKpiCards orders={orders} totalCount={totalCount} />
         <OrdersFiltersBar
           query={query}
           paymentStatus={paymentStatus}
@@ -163,9 +124,21 @@ export function OrdersListPage() {
             <p className="mt-2 text-sm">Prueba otra búsqueda o crea un borrador.</p>
           </div>
         ) : (
-          <OrdersTable orders={orders} />
+          <>
+            <OrdersPanel className="overflow-hidden p-0">
+              <OrdersTable orders={orders} bare />
+              <OrdersPagination
+                page={page}
+                pageSize={PAGE_SIZE}
+                total={totalCount}
+                onPageChange={setPage}
+              />
+            </OrdersPanel>
+          </>
         )}
       </OrdersShell>
+
+      <OrderExportModal open={exportOpen} onOpenChange={setExportOpen} />
     </>
   )
 }

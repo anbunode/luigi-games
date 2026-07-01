@@ -17,9 +17,14 @@ import {
 } from "./OrdersStatusChip"
 import { OrdersPanel } from "./OrdersShell"
 
-export function OrdersTable({ orders }: { orders: OrderSummary[] }) {
-  return (
-    <OrdersPanel>
+export function OrdersTable({
+  orders,
+  bare = false,
+}: {
+  orders: OrderSummary[]
+  bare?: boolean
+}) {
+  const table = (
       <div className="overflow-x-auto">
         <table className="w-full min-w-[980px] text-left text-sm">
           <thead>
@@ -133,6 +138,11 @@ export function OrdersTable({ orders }: { orders: OrderSummary[] }) {
           </tbody>
         </table>
       </div>
-    </OrdersPanel>
   )
+
+  if (bare) {
+    return table
+  }
+
+  return <OrdersPanel>{table}</OrdersPanel>
 }

@@ -36,11 +36,14 @@ export function skrepayThemeCss(): string {
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
 
     html.${SKREPAY_THEME_MARKER} [data-skrepay-orders-shell],
-    html.${SKREPAY_THEME_MARKER} [data-skrepay-orders-shell] * {
+    html.${SKREPAY_THEME_MARKER} [data-skrepay-order-detail-shell],
+    html.${SKREPAY_THEME_MARKER} [data-skrepay-orders-shell] *,
+    html.${SKREPAY_THEME_MARKER} [data-skrepay-order-detail-shell] * {
       font-family: ${skrepayFont};
     }
 
-    html.${SKREPAY_THEME_MARKER} [data-skrepay-orders-shell] {
+    html.${SKREPAY_THEME_MARKER} [data-skrepay-orders-shell],
+    html.${SKREPAY_THEME_MARKER} [data-skrepay-order-detail-shell] {
       --skrepay-accent: ${skrepayColors.accent};
       --skrepay-accent-strong: ${skrepayColors.accentStrong};
       --skrepay-accent-muted: ${skrepayColors.accentMuted};

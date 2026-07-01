@@ -99,8 +99,14 @@ function buildSparkline(orders: OrderSummary[], pick: (o: OrderSummary) => numbe
   return slice.map(pick)
 }
 
-export function OrdersKpiCards({ orders }: { orders: OrderSummary[] }) {
-  const kpis = computeOrderKpis(orders)
+export function OrdersKpiCards({
+  orders,
+  totalCount,
+}: {
+  orders: OrderSummary[]
+  totalCount?: number
+}) {
+  const kpis = computeOrderKpis(orders, totalCount)
   const revenueLabel = formatOrderMoney(kpis.totalRevenue, kpis.primaryCurrency)
 
   return (
@@ -108,7 +114,7 @@ export function OrdersKpiCards({ orders }: { orders: OrderSummary[] }) {
       <KpiCard
         label="Total pedidos"
         value={String(kpis.totalOrders)}
-        hint="En esta vista"
+        hint={totalCount !== undefined ? "En catálogo" : "En esta vista"}
         icon={<span className="text-xs font-bold">#</span>}
         spark={buildSparkline(orders, () => 1)}
       />

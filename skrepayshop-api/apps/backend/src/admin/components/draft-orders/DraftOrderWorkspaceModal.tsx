@@ -93,10 +93,17 @@ export function DraftOrderWorkspaceModal({
 
   const convertMutation = useMutation({
     mutationFn: () => convertDraftOrder(draftId!),
-    onSuccess: () => {
+    onSuccess: (result) => {
       toast.success("Borrador convertido en pedido")
       onOpenChange(false)
-      window.location.href = `/app/orders/${draftId}`
+      const orderId =
+        (result as { order?: { id?: string } })?.order?.id ??
+        (result as { id?: string })?.id
+      if (orderId) {
+        window.location.href = `/app/orders/${orderId}`
+      } else {
+        window.location.href = "/app/orders"
+      }
     },
     onError: (error: Error) => {
       toast.error(error.message || "No se pudo convertir el borrador")
