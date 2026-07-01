@@ -11,8 +11,8 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  NEXT_PUBLIC_TENANT_ID = "luigi-games"
-  NEXT_PUBLIC_MEDUSA_BACKEND_URL = "https://luigi-games-api1.onrender.com"
+  NEXT_PUBLIC_TENANT_ID = "luigi-game"
+  NEXT_PUBLIC_MEDUSA_BACKEND_URL = "https://skrepayshop-api.onrender.com"
   NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY = "pk_12c9646e8e9de4fc5aace4a45674ed2257e690f17351cbf33d4321ebfb3edd66"
   NEXT_PUBLIC_BASE_URL = "https://luigi-games-store.netlify.app"
   NEXT_PUBLIC_SITE_URL = "https://luigigame.com"
