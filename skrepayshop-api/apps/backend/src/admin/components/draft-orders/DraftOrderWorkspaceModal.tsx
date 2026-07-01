@@ -3,6 +3,7 @@ import { PencilSquare, Trash } from "@medusajs/icons"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { DraftOrderEditItemsModal } from "./DraftOrderEditItemsModal"
+import { DraftOrderPaymentTermsCard } from "./DraftOrderPaymentTermsCard"
 import { DraftPanelCard } from "./DraftOrdersShell"
 import {
   convertDraftOrder,
@@ -12,6 +13,8 @@ import {
   formatDraftAddress,
   formatDraftDate,
   formatDraftMoney,
+  formatPaymentDueDate,
+  readDraftPaymentTerms,
 } from "../../lib/draft-orders-api"
 import { StoreSettingsModalHeader } from "../store-settings/StoreSettingsModalHeader"
 
@@ -66,6 +69,7 @@ export function DraftOrderWorkspaceModal({
   const draft = draftQuery.data
   const items = draft?.items ?? []
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
+  const paymentTerms = readDraftPaymentTerms(draft?.metadata)
 
   useEffect(() => {
     if (!open) {
@@ -145,7 +149,14 @@ export function DraftOrderWorkspaceModal({
                 <div className="flex flex-col gap-4">
                   <DraftPanelCard>
                     <div className="flex items-center justify-between border-b border-ui-border-base px-5 py-4">
-                      <Text weight="plus">Resumen</Text>
+                      <div className="flex items-center gap-2">
+                        <Text weight="plus">Resumen</Text>
+                        {paymentTerms.enabled && paymentTerms.dueAt ? (
+                          <Badge size="2xsmall" color="orange">
+                            Vence {formatPaymentDueDate(paymentTerms.dueAt)}
+                          </Badge>
+                        ) : null}
+                      </div>
                       <Button
                         size="small"
                         variant="secondary"
@@ -336,6 +347,16 @@ export function DraftOrderWorkspaceModal({
                       </div>
                     </div>
                   </DraftPanelCard>
+
+                  <DraftOrderPaymentTermsCard
+                    draft={draft}
+                    onUpdated={() => {
+                      draftQuery.refetch()
+                      queryClient.invalidateQueries({
+                        queryKey: ["skrepay", "draft-orders"],
+                      })
+                    }}
+                  />
 
                   <DraftPanelCard>
                     <div className="border-b border-ui-border-base px-5 py-4">

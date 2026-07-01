@@ -48,6 +48,7 @@ export type DraftOrderSummary = {
   sales_channel?: { id?: string; name?: string | null } | null
   shipping_address?: DraftAddress | null
   billing_address?: DraftAddress | null
+  metadata?: Record<string, unknown> | null
   items?: Array<{
     id: string
     title: string
@@ -84,7 +85,57 @@ const LIST_FIELDS =
   "id,display_id,created_at,email,status,currency_code,total,+customer.email,+sales_channel.name,+region.name"
 
 const DETAIL_FIELDS =
-  "id,display_id,created_at,email,status,currency_code,subtotal,shipping_total,tax_total,discount_total,total,+customer.id,+customer.email,+customer.first_name,+customer.last_name,+sales_channel.name,+region.name,*items,*shipping_address,*billing_address"
+  "id,display_id,created_at,email,status,currency_code,subtotal,shipping_total,tax_total,discount_total,total,metadata,+customer.id,+customer.email,+customer.first_name,+customer.last_name,+sales_channel.name,+region.name,*items,*shipping_address,*billing_address"
+
+export const SKREPAY_INVOICE_DUE_ENABLED = "skrepay_invoice_due_enabled"
+export const SKREPAY_PAYMENT_DUE_AT = "skrepay_payment_due_at"
+
+export type DraftPaymentTerms = {
+  enabled: boolean
+  dueAt: string | null
+}
+
+export function readDraftPaymentTerms(
+  metadata?: Record<string, unknown> | null
+): DraftPaymentTerms {
+  return {
+    enabled: metadata?.[SKREPAY_INVOICE_DUE_ENABLED] === true,
+    dueAt:
+      typeof metadata?.[SKREPAY_PAYMENT_DUE_AT] === "string"
+        ? metadata[SKREPAY_PAYMENT_DUE_AT]
+        : null,
+  }
+}
+
+export function defaultPaymentDueDateInput() {
+  const date = new Date()
+  date.setDate(date.getDate() + 14)
+  return date.toISOString().slice(0, 10)
+}
+
+export function paymentDueInputToIso(dateInput: string) {
+  return new Date(`${dateInput}T23:59:59`).toISOString()
+}
+
+export function paymentDueIsoToInput(iso: string | null) {
+  if (!iso) return defaultPaymentDueDateInput()
+  try {
+    return new Date(iso).toISOString().slice(0, 10)
+  } catch {
+    return defaultPaymentDueDateInput()
+  }
+}
+
+export function formatPaymentDueDate(iso: string | null) {
+  if (!iso) return "—"
+  try {
+    return new Intl.DateTimeFormat("es-ES", { dateStyle: "long" }).format(
+      new Date(iso)
+    )
+  } catch {
+    return iso
+  }
+}
 
 async function withDraftEdit(draftId: string, action: () => Promise<void>) {
   await adminFetch(`/admin/draft-orders/${draftId}/edit`, {
@@ -272,6 +323,33 @@ export async function convertDraftOrder(id: string) {
 
 export async function deleteDraftOrder(id: string) {
   return adminFetch(`/admin/draft-orders/${id}`, { method: "DELETE" })
+}
+
+export async function updateDraftPaymentTerms(
+  draft: DraftOrderSummary,
+  terms: DraftPaymentTerms
+) {
+  const metadata = {
+    ...(draft.metadata ?? {}),
+    [SKREPAY_INVOICE_DUE_ENABLED]: terms.enabled,
+    [SKREPAY_PAYMENT_DUE_AT]:
+      terms.enabled && terms.dueAt ? terms.dueAt : null,
+  }
+
+  const body: Record<string, unknown> = { metadata }
+  if (draft.email) {
+    body.email = draft.email
+  }
+
+  const data = await adminFetch<{ draft_order: DraftOrderSummary }>(
+    `/admin/draft-orders/${draft.id}`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    }
+  )
+
+  return data.draft_order
 }
 
 export async function addVariantToDraft(
