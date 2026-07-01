@@ -31,6 +31,16 @@ import {
   tenantAdminStockLocationFulfillmentProvidersPostShim,
   tenantAdminStockLocationFulfillmentSetsPostShim,
 } from "../lib/tenant-fulfillment-shim"
+import {
+  tenantAdminInventoryItemByIdDeleteShim,
+  tenantAdminInventoryItemByIdPostShim,
+  tenantAdminInventoryItemLocationLevelByLocationPostShim,
+  tenantAdminInventoryItemLocationLevelDeleteShim,
+  tenantAdminInventoryItemLocationLevelsBatchPostShim,
+  tenantAdminInventoryItemLocationLevelsPostShim,
+  tenantAdminInventoryItemsPostShim,
+  tenantAdminInventoryLocationLevelsBatchPostShim,
+} from "../lib/tenant-inventory-shim"
 
 export default defineMiddlewares({
   routes: [
@@ -132,6 +142,46 @@ export default defineMiddlewares({
       method: "POST",
       matcher: "/admin/fulfillment-sets/:id/service-zones",
       middlewares: [tenantAdminFulfillmentSetServiceZonesPostShim],
+    },
+    {
+      method: "POST",
+      matcher: "/admin/inventory-items",
+      middlewares: [tenantAdminInventoryItemsPostShim],
+    },
+    {
+      method: "POST",
+      matcher: "/admin/inventory-items/location-levels/batch",
+      middlewares: [tenantAdminInventoryLocationLevelsBatchPostShim],
+    },
+    {
+      method: "POST",
+      matcher: "/admin/inventory-items/:id",
+      middlewares: [tenantAdminInventoryItemByIdPostShim],
+    },
+    {
+      method: "DELETE",
+      matcher: "/admin/inventory-items/:id",
+      middlewares: [tenantAdminInventoryItemByIdDeleteShim],
+    },
+    {
+      method: "POST",
+      matcher: "/admin/inventory-items/:id/location-levels/batch",
+      middlewares: [tenantAdminInventoryItemLocationLevelsBatchPostShim],
+    },
+    {
+      method: "POST",
+      matcher: "/admin/inventory-items/:id/location-levels/:location_id",
+      middlewares: [tenantAdminInventoryItemLocationLevelByLocationPostShim],
+    },
+    {
+      method: "DELETE",
+      matcher: "/admin/inventory-items/:id/location-levels/:location_id",
+      middlewares: [tenantAdminInventoryItemLocationLevelDeleteShim],
+    },
+    {
+      method: "POST",
+      matcher: "/admin/inventory-items/:id/location-levels",
+      middlewares: [tenantAdminInventoryItemLocationLevelsPostShim],
     },
     {
       method: "POST",
