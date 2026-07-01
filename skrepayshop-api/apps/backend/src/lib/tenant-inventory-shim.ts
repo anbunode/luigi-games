@@ -5,7 +5,12 @@ import type {
 } from "@medusajs/framework/http"
 import { MedusaError, generateEntityId } from "@medusajs/framework/utils"
 import { getPlatformPool } from "./platform-db"
-import { resolveStockLocationRequestSchema } from "./tenant-stock-locations-shim"
+import {
+  resolveCatalogSchemaContext,
+  stockLocationExistsInSchemas,
+  uniqueSchemas,
+  type CatalogSchemaContext,
+} from "./tenant-catalog-schema"
 
 type InventoryItemRow = {
   id: string
@@ -124,16 +129,16 @@ function mapInventoryLevel(row: InventoryLevelRow) {
   }
 }
 
-async function assertStockLocationExists(schema: string, locationId: string) {
-  const schemaQ = quoteSchema(schema)
-  const result = await getPlatformPool().query<{ id: string }>(
-    `select id
-     from ${schemaQ}.stock_location
-     where id = $1 and deleted_at is null`,
-    [locationId]
+async function assertStockLocationExists(
+  context: CatalogSchemaContext,
+  locationId: string
+) {
+  const exists = await stockLocationExistsInSchemas(
+    uniqueSchemas([context.catalogSchema, context.tenantSchema]),
+    locationId
   )
 
-  if (!result.rows[0]) {
+  if (!exists) {
     throw new MedusaError(
       MedusaError.Types.NOT_FOUND,
       `Stock locations with ids: ${locationId} was not found`
@@ -364,11 +369,12 @@ export async function loadTenantInventoryItem(schema: string, id: string) {
 }
 
 async function createInventoryLevelSql(
-  schema: string,
+  context: CatalogSchemaContext,
   itemId: string,
   input: LocationLevelInput
 ) {
-  await assertStockLocationExists(schema, input.location_id)
+  const schema = context.catalogSchema
+  await assertStockLocationExists(context, input.location_id)
 
   const existing = await loadInventoryLevelByLocation(
     schema,
@@ -377,7 +383,7 @@ async function createInventoryLevelSql(
   )
 
   if (existing) {
-    return updateInventoryLevelSql(schema, itemId, input.location_id, input)
+    return updateInventoryLevelSql(context, itemId, input.location_id, input)
   }
 
   const schemaQ = quoteSchema(schema)
@@ -409,15 +415,16 @@ async function createInventoryLevelSql(
 }
 
 async function updateInventoryLevelSql(
-  schema: string,
+  context: CatalogSchemaContext,
   itemId: string,
   locationId: string,
   input: { stocked_quantity?: number; incoming_quantity?: number }
 ) {
+  const schema = context.catalogSchema
   const existing = await loadInventoryLevelByLocation(schema, itemId, locationId)
 
   if (!existing) {
-    return createInventoryLevelSql(schema, itemId, {
+    return createInventoryLevelSql(context, itemId, {
       location_id: locationId,
       stocked_quantity: input.stocked_quantity,
       incoming_quantity: input.incoming_quantity,
@@ -492,9 +499,10 @@ async function deleteInventoryLevelByLocationSql(
 }
 
 async function createInventoryItemSql(
-  schema: string,
+  context: CatalogSchemaContext,
   input: CreateInventoryItemInput
 ) {
+  const schema = context.catalogSchema
   const schemaQ = quoteSchema(schema)
   const id = generateEntityId(undefined, "iitem")
 
@@ -526,7 +534,7 @@ async function createInventoryItemSql(
   )
 
   for (const level of input.location_levels ?? []) {
-    await createInventoryLevelSql(schema, id, level)
+    await createInventoryLevelSql(context, id, level)
   }
 
   return loadTenantInventoryItem(schema, id)
@@ -599,7 +607,7 @@ async function deleteInventoryItemSql(schema: string, id: string) {
 }
 
 async function runBatchInventoryLevels(
-  schema: string,
+  context: CatalogSchemaContext,
   itemId: string | undefined,
   body: {
     create?: BatchLevelCreate[]
@@ -608,6 +616,7 @@ async function runBatchInventoryLevels(
     force?: boolean
   }
 ) {
+  const schema = context.catalogSchema
   const created: InventoryLevelRow[] = []
   const updated: InventoryLevelRow[] = []
   const deleted: string[] = []
@@ -619,7 +628,7 @@ async function runBatchInventoryLevels(
     }
 
     await assertInventoryItemExists(schema, inventoryItemId)
-    const row = await createInventoryLevelSql(schema, inventoryItemId, entry)
+    const row = await createInventoryLevelSql(context, inventoryItemId, entry)
     if (row) {
       created.push(row)
     }
@@ -633,7 +642,7 @@ async function runBatchInventoryLevels(
 
     await assertInventoryItemExists(schema, inventoryItemId)
     const row = await updateInventoryLevelSql(
-      schema,
+      context,
       inventoryItemId,
       entry.location_id,
       entry
@@ -696,8 +705,8 @@ export async function tenantAdminInventoryItemsListShim(
   next: MedusaNextFunction
 ) {
   try {
-    const schema = await resolveStockLocationRequestSchema(req)
-    if (!schema) {
+    const context = await resolveCatalogSchemaContext(req)
+    if (!context) {
       next()
       return
     }
@@ -719,7 +728,7 @@ export async function tenantAdminInventoryItemsListShim(
       locationId = readQueryString(nested)
     }
 
-    const result = await loadInventoryItemsList(schema, {
+    const result = await loadInventoryItemsList(context.catalogSchema, {
       limit,
       offset,
       q,
@@ -740,8 +749,8 @@ export async function tenantAdminInventoryItemByIdGetShim(
   next: MedusaNextFunction
 ) {
   try {
-    const schema = await resolveStockLocationRequestSchema(req)
-    if (!schema) {
+    const context = await resolveCatalogSchemaContext(req)
+    if (!context) {
       next()
       return
     }
@@ -752,7 +761,7 @@ export async function tenantAdminInventoryItemByIdGetShim(
       return
     }
 
-    const inventory_item = await loadTenantInventoryItem(schema, id)
+    const inventory_item = await loadTenantInventoryItem(context.catalogSchema, id)
     if (!inventory_item) {
       throw new MedusaError(
         MedusaError.Types.NOT_FOUND,
@@ -772,11 +781,12 @@ export async function tenantAdminInventoryItemLocationLevelsGetShim(
   next: MedusaNextFunction
 ) {
   try {
-    const schema = await resolveStockLocationRequestSchema(req)
-    if (!schema) {
+    const context = await resolveCatalogSchemaContext(req)
+    if (!context) {
       next()
       return
     }
+    const schema = context.catalogSchema
 
     const id = req.params.id
     if (!id) {
@@ -814,14 +824,15 @@ export async function tenantAdminInventoryItemsPostShim(
   next: MedusaNextFunction
 ) {
   try {
-    const schema = await resolveStockLocationRequestSchema(req)
-    if (!schema) {
+    const context = await resolveCatalogSchemaContext(req)
+    if (!context) {
       next()
       return
     }
+    const schema = context.catalogSchema
 
     const body = (req.body ?? {}) as CreateInventoryItemInput
-    const inventory_item = await createInventoryItemSql(schema, body)
+    const inventory_item = await createInventoryItemSql(context, body)
     res.status(200).json({ inventory_item })
   } catch (error) {
     next(error)
@@ -834,11 +845,12 @@ export async function tenantAdminInventoryItemByIdPostShim(
   next: MedusaNextFunction
 ) {
   try {
-    const schema = await resolveStockLocationRequestSchema(req)
-    if (!schema) {
+    const context = await resolveCatalogSchemaContext(req)
+    if (!context) {
       next()
       return
     }
+    const schema = context.catalogSchema
 
     const id = req.params.id
     if (!id) {
@@ -860,11 +872,12 @@ export async function tenantAdminInventoryItemByIdDeleteShim(
   next: MedusaNextFunction
 ) {
   try {
-    const schema = await resolveStockLocationRequestSchema(req)
-    if (!schema) {
+    const context = await resolveCatalogSchemaContext(req)
+    if (!context) {
       next()
       return
     }
+    const schema = context.catalogSchema
 
     const id = req.params.id
     if (!id) {
@@ -885,11 +898,12 @@ export async function tenantAdminInventoryItemLocationLevelsPostShim(
   next: MedusaNextFunction
 ) {
   try {
-    const schema = await resolveStockLocationRequestSchema(req)
-    if (!schema) {
+    const context = await resolveCatalogSchemaContext(req)
+    if (!context) {
       next()
       return
     }
+    const schema = context.catalogSchema
 
     const id = req.params.id
     if (!id) {
@@ -899,7 +913,7 @@ export async function tenantAdminInventoryItemLocationLevelsPostShim(
 
     await assertInventoryItemExists(schema, id)
     const body = (req.body ?? {}) as LocationLevelInput
-    await createInventoryLevelSql(schema, id, body)
+    await createInventoryLevelSql(context, id, body)
     const inventory_item = await loadTenantInventoryItem(schema, id)
     res.status(200).json({ inventory_item })
   } catch (error) {
@@ -913,11 +927,12 @@ export async function tenantAdminInventoryItemLocationLevelByLocationPostShim(
   next: MedusaNextFunction
 ) {
   try {
-    const schema = await resolveStockLocationRequestSchema(req)
-    if (!schema) {
+    const context = await resolveCatalogSchemaContext(req)
+    if (!context) {
       next()
       return
     }
+    const schema = context.catalogSchema
 
     const id = req.params.id
     const locationId = req.params.location_id
@@ -931,7 +946,7 @@ export async function tenantAdminInventoryItemLocationLevelByLocationPostShim(
       stocked_quantity?: number
       incoming_quantity?: number
     }
-    await updateInventoryLevelSql(schema, id, locationId, body)
+    await updateInventoryLevelSql(context, id, locationId, body)
     const inventory_item = await loadTenantInventoryItem(schema, id)
     res.status(200).json({ inventory_item })
   } catch (error) {
@@ -945,11 +960,12 @@ export async function tenantAdminInventoryItemLocationLevelDeleteShim(
   next: MedusaNextFunction
 ) {
   try {
-    const schema = await resolveStockLocationRequestSchema(req)
-    if (!schema) {
+    const context = await resolveCatalogSchemaContext(req)
+    if (!context) {
       next()
       return
     }
+    const schema = context.catalogSchema
 
     const id = req.params.id
     const locationId = req.params.location_id
@@ -981,11 +997,12 @@ export async function tenantAdminInventoryItemLocationLevelsBatchPostShim(
   next: MedusaNextFunction
 ) {
   try {
-    const schema = await resolveStockLocationRequestSchema(req)
-    if (!schema) {
+    const context = await resolveCatalogSchemaContext(req)
+    if (!context) {
       next()
       return
     }
+    const schema = context.catalogSchema
 
     const id = req.params.id
     if (!id) {
@@ -1000,7 +1017,7 @@ export async function tenantAdminInventoryItemLocationLevelsBatchPostShim(
       force?: boolean
     }
 
-    const result = await runBatchInventoryLevels(schema, id, body)
+    const result = await runBatchInventoryLevels(context, id, body)
     res.status(200).json(result)
   } catch (error) {
     next(error)
@@ -1013,11 +1030,12 @@ export async function tenantAdminInventoryLocationLevelsBatchPostShim(
   next: MedusaNextFunction
 ) {
   try {
-    const schema = await resolveStockLocationRequestSchema(req)
-    if (!schema) {
+    const context = await resolveCatalogSchemaContext(req)
+    if (!context) {
       next()
       return
     }
+    const schema = context.catalogSchema
 
     const body = (req.body ?? {}) as {
       create?: BatchLevelCreate[]
@@ -1026,7 +1044,7 @@ export async function tenantAdminInventoryLocationLevelsBatchPostShim(
       force?: boolean
     }
 
-    const result = await runBatchInventoryLevels(schema, undefined, body)
+    const result = await runBatchInventoryLevels(context, undefined, body)
     res.status(200).json(result)
   } catch (error) {
     next(error)

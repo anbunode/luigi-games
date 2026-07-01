@@ -9,6 +9,7 @@ import {
   resolveTenantForAdminRequest,
   resolveTenantSchema,
 } from "./tenant-db-scope"
+import { resolveCatalogSchemaContext } from "./tenant-catalog-schema"
 
 type ScopedRequest = MedusaRequest & {
   skrepayTenantSchema?: string
@@ -674,8 +675,8 @@ export async function tenantAdminStockLocationsListShim(
   next: MedusaNextFunction
 ) {
   try {
-    const schema = await resolveStockLocationRequestSchema(req)
-    if (!schema) {
+    const context = await resolveCatalogSchemaContext(req)
+    if (!context) {
       next()
       return
     }
@@ -691,16 +692,34 @@ export async function tenantAdminStockLocationsListShim(
         ? req.query.id.trim()
         : undefined
 
-    const { rows, count } = await loadStockLocationRows(schema, {
-      id,
-      q,
-      limit,
-      offset,
-    })
+    const schemas =
+      context.catalogSchema === context.tenantSchema
+        ? [context.tenantSchema]
+        : [context.tenantSchema, context.catalogSchema]
+
+    const merged = new Map<string, TenantStockLocation>()
+
+    for (const schema of schemas) {
+      const { rows } = await loadStockLocationRows(schema, {
+        id,
+        q,
+        limit: 100,
+        offset: 0,
+      })
+
+      for (const row of rows) {
+        merged.set(row.id, row)
+      }
+    }
+
+    const allRows = [...merged.values()].sort((a, b) =>
+      a.name.localeCompare(b.name)
+    )
+    const rows = allRows.slice(offset, offset + limit)
 
     res.json({
       stock_locations: rows,
-      count,
+      count: allRows.length,
       offset,
       limit,
     })
@@ -715,8 +734,8 @@ export async function tenantAdminStockLocationByIdGetShim(
   next: MedusaNextFunction
 ) {
   try {
-    const schema = await resolveStockLocationRequestSchema(req)
-    if (!schema) {
+    const context = await resolveCatalogSchemaContext(req)
+    if (!context) {
       next()
       return
     }
@@ -727,8 +746,24 @@ export async function tenantAdminStockLocationByIdGetShim(
       return
     }
 
-    const stock_location = await loadTenantStockLocation(schema, id)
-    res.json({ stock_location })
+    const schemas =
+      context.catalogSchema === context.tenantSchema
+        ? [context.tenantSchema]
+        : [context.tenantSchema, context.catalogSchema]
+
+    for (const schema of schemas) {
+      const row = await loadStockLocationRow(schema, id)
+      if (row) {
+        const stock_location = await hydrateStockLocation(schema, row)
+        res.json({ stock_location })
+        return
+      }
+    }
+
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      `Stock location with id: ${id} was not found`
+    )
   } catch (error) {
     next(error)
   }
