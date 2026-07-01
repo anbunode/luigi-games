@@ -15,6 +15,12 @@ module.exports = defineConfig({
       cookieSecret: process.env.COOKIE_SECRET,
     },
   },
+  plugins: [
+    {
+      resolve: "@medusajs/draft-order",
+      options: {},
+    },
+  ],
   admin: {
     backendUrl: process.env.MEDUSA_BACKEND_URL,
     storefrontUrl:
