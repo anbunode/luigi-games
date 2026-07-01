@@ -18,8 +18,72 @@ type DraftCreateBody = {
   region_id?: string
 }
 
+type DraftRow = {
+  region_id?: string | null
+  sales_channel_id?: string | null
+  region?: { id?: string; name?: string } | null
+  sales_channel?: { id?: string; name?: string } | null
+  currency_code?: string | null
+}
+
 type ValidatedRequest = MedusaRequest & {
   validatedBody?: DraftCreateBody
+}
+
+function patchDraftRelations<T extends DraftRow>(draft: T): T {
+  const next = { ...draft }
+
+  if (next.region_id && !next.region) {
+    next.region = { id: next.region_id, name: "—" }
+  }
+
+  if (next.sales_channel_id && !next.sales_channel) {
+    next.sales_channel = { id: next.sales_channel_id, name: "—" }
+  }
+
+  if (!next.currency_code) {
+    next.currency_code = "usd"
+  }
+
+  return next
+}
+
+function patchDraftListBody(body: unknown): unknown {
+  if (!body || typeof body !== "object") {
+    return body
+  }
+
+  const record = body as Record<string, unknown>
+
+  if (Array.isArray(record.draft_orders)) {
+    return {
+      ...record,
+      draft_orders: record.draft_orders.map((row) =>
+        patchDraftRelations(row as DraftRow)
+      ),
+    }
+  }
+
+  if (record.draft_order && typeof record.draft_order === "object") {
+    return {
+      ...record,
+      draft_order: patchDraftRelations(record.draft_order as DraftRow),
+    }
+  }
+
+  return body
+}
+
+export async function tenantDraftOrdersGetMiddleware(
+  _req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  const originalJson = res.json.bind(res)
+
+  res.json = ((body: unknown) => originalJson(patchDraftListBody(body))) as typeof res.json
+
+  next()
 }
 
 function quoteSchema(schema: string): string {

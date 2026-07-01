@@ -44,7 +44,7 @@ import {
   tenantAdminInventoryItemsPostShim,
   tenantAdminInventoryLocationLevelsBatchPostShim,
 } from "../lib/tenant-inventory-shim"
-import { tenantDraftOrderCreateMiddleware, tenantDraftOrderConvertMiddleware } from "../lib/tenant-draft-order-middleware"
+import { tenantDraftOrderCreateMiddleware, tenantDraftOrderConvertMiddleware, tenantDraftOrdersGetMiddleware } from "../lib/tenant-draft-order-middleware"
 
 export default defineMiddlewares({
   routes: [
@@ -201,6 +201,16 @@ export default defineMiddlewares({
       method: "POST",
       matcher: "/admin/inventory-items/:id/location-levels",
       middlewares: [tenantAdminInventoryItemLocationLevelsPostShim],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/draft-orders",
+      middlewares: [tenantDraftOrdersGetMiddleware],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/draft-orders/:id",
+      middlewares: [tenantDraftOrdersGetMiddleware],
     },
     {
       method: "POST",
