@@ -21,7 +21,8 @@ export const skrepayUrls = {
 
   /** URL que mostramos al usuario (panel de comerciante) */
   panelDisplay:
-    process.env.NEXT_PUBLIC_PANEL_URL || "https://app.skrepay.com",
+    process.env.NEXT_PUBLIC_PANEL_URL ||
+    `${adminOrigin}/app`,
 
   /** Origen real del admin Medusa (Render o api.skrepay.com con CNAME) */
   adminOrigin,

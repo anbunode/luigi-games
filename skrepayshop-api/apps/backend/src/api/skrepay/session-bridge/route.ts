@@ -10,6 +10,20 @@ type SessionRequest = MedusaRequest & {
   }
 }
 
+function resolvePostLoginPath(next: unknown): string {
+  if (typeof next !== "string" || !next.trim()) {
+    return "/app"
+  }
+
+  const path = next.trim()
+
+  if (!path.startsWith("/app") || path.includes("..") || path.includes("//")) {
+    return "/app"
+  }
+
+  return path
+}
+
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const token = typeof req.query.token === "string" ? req.query.token.trim() : ""
 
@@ -56,5 +70,6 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     })
   })
 
-  res.status(302).setHeader("Location", "/app").end()
+  const destination = resolvePostLoginPath(req.query.next)
+  res.status(302).setHeader("Location", destination).end()
 }

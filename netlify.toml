@@ -13,7 +13,7 @@
   NODE_VERSION = "20"
   NEXT_PUBLIC_PLATFORM_NAME = "SkrepayShop"
   NEXT_PUBLIC_PLATFORM_URL = "https://skrepay.com"
-  NEXT_PUBLIC_PANEL_URL = "https://app.skrepay.com"
+  NEXT_PUBLIC_PANEL_URL = "https://skrepayshop-api.onrender.com/app"
   NEXT_PUBLIC_TENANT_STORE_BASE = "skrepay.shop"
   NEXT_PUBLIC_PAYMENT_LINK_BASE = "pay.skrepay.com"
   NEXT_PUBLIC_DEMO_STORE_URL = "https://demo.skrepay.shop"

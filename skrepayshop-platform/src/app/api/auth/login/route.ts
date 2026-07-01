@@ -4,6 +4,7 @@ import { platformConfig } from "@/lib/config"
 type LoginBody = {
   email?: string
   password?: string
+  next?: string
 }
 
 export async function POST(request: Request) {
@@ -56,6 +57,11 @@ export async function POST(request: Request) {
     platformConfig.backendUrl
   )
   bridgeUrl.searchParams.set("token", token)
+
+  const next = body.next?.trim()
+  if (next && next.startsWith("/app") && !next.includes("..")) {
+    bridgeUrl.searchParams.set("next", next)
+  }
 
   return NextResponse.json({
     redirectUrl: bridgeUrl.toString(),

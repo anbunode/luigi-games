@@ -2,10 +2,13 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { LoaderCircle } from "lucide-react"
 import { platformConfig } from "@/lib/config"
 
 export function LoginForm() {
+  const searchParams = useSearchParams()
+  const nextPath = searchParams.get("next")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -21,7 +24,11 @@ export function LoginForm() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email,
+          password,
+          ...(nextPath?.startsWith("/app") ? { next: nextPath } : {}),
+        }),
       })
 
       const data = await response.json().catch(() => ({}))
