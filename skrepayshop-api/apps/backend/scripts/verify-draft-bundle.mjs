@@ -21,8 +21,9 @@ const main = bundles[0]
 console.log("main bundle:", main.name, main.size)
 
 const checks = [
-  ["custom Spanish list", "Cargando borradores"],
-  ["custom composer", "borrador@pendiente.local"],
+  ["custom Spanish list (should be false)", "Cargando borradores"],
+  ["custom composer (should be false)", "borrador@pendiente.local"],
+  ["native draft plugin", "@medusajs/draft-order"],
   ["medusa draft items route", "/draft-orders/:id/items"],
   ["medusa convert", "convert-to-order"],
   ["order draft link widget", "Usa un borrador"],
