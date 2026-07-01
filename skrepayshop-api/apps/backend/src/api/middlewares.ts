@@ -33,11 +33,14 @@ import {
 } from "../lib/tenant-fulfillment-shim"
 import {
   tenantAdminInventoryItemByIdDeleteShim,
+  tenantAdminInventoryItemByIdGetShim,
   tenantAdminInventoryItemByIdPostShim,
   tenantAdminInventoryItemLocationLevelByLocationPostShim,
   tenantAdminInventoryItemLocationLevelDeleteShim,
   tenantAdminInventoryItemLocationLevelsBatchPostShim,
+  tenantAdminInventoryItemLocationLevelsGetShim,
   tenantAdminInventoryItemLocationLevelsPostShim,
+  tenantAdminInventoryItemsListShim,
   tenantAdminInventoryItemsPostShim,
   tenantAdminInventoryLocationLevelsBatchPostShim,
 } from "../lib/tenant-inventory-shim"
@@ -144,6 +147,11 @@ export default defineMiddlewares({
       middlewares: [tenantAdminFulfillmentSetServiceZonesPostShim],
     },
     {
+      method: "GET",
+      matcher: "/admin/inventory-items",
+      middlewares: [tenantAdminInventoryItemsListShim],
+    },
+    {
       method: "POST",
       matcher: "/admin/inventory-items",
       middlewares: [tenantAdminInventoryItemsPostShim],
@@ -152,6 +160,11 @@ export default defineMiddlewares({
       method: "POST",
       matcher: "/admin/inventory-items/location-levels/batch",
       middlewares: [tenantAdminInventoryLocationLevelsBatchPostShim],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/inventory-items/:id",
+      middlewares: [tenantAdminInventoryItemByIdGetShim],
     },
     {
       method: "POST",
@@ -177,6 +190,11 @@ export default defineMiddlewares({
       method: "DELETE",
       matcher: "/admin/inventory-items/:id/location-levels/:location_id",
       middlewares: [tenantAdminInventoryItemLocationLevelDeleteShim],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/inventory-items/:id/location-levels",
+      middlewares: [tenantAdminInventoryItemLocationLevelsGetShim],
     },
     {
       method: "POST",

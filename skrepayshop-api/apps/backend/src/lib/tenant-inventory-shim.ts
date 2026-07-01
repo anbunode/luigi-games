@@ -196,6 +196,121 @@ async function loadInventoryLevelByLocation(
   return result.rows[0] ?? null
 }
 
+async function loadInventoryItemsList(
+  schema: string,
+  options: {
+    limit?: number
+    offset?: number
+    q?: string
+    id?: string
+    sku?: string
+    locationId?: string
+  } = {}
+) {
+  const schemaQ = quoteSchema(schema)
+  const limit = Math.min(options.limit ?? 20, 100)
+  const offset = options.offset ?? 0
+  const values: unknown[] = []
+  const where: string[] = ["ii.deleted_at is null"]
+
+  if (options.id) {
+    values.push(options.id)
+    where.push(`ii.id = $${values.length}`)
+  }
+
+  if (options.sku) {
+    values.push(options.sku)
+    where.push(`ii.sku = $${values.length}`)
+  }
+
+  if (options.q) {
+    values.push(`%${options.q}%`)
+    where.push(
+      `(ii.sku ilike $${values.length} or ii.title ilike $${values.length} or ii.description ilike $${values.length})`
+    )
+  }
+
+  if (options.locationId) {
+    values.push(options.locationId)
+    where.push(`exists (
+      select 1
+      from ${schemaQ}.inventory_level il
+      where il.inventory_item_id = ii.id
+        and il.location_id = $${values.length}
+        and il.deleted_at is null
+    )`)
+  }
+
+  const whereSql = where.length ? `where ${where.join(" and ")}` : ""
+
+  const countResult = await getPlatformPool().query<{ count: number }>(
+    `select count(*)::int as count
+     from ${schemaQ}.inventory_item ii
+     ${whereSql}`,
+    values
+  )
+
+  values.push(limit, offset)
+  const rowsResult = await getPlatformPool().query<InventoryItemRow>(
+    `select ii.id, ii.sku, ii.origin_country, ii.hs_code, ii.mid_code, ii.material,
+            ii.weight, ii.length, ii.height, ii.width, ii.requires_shipping,
+            ii.description, ii.title, ii.thumbnail, ii.metadata,
+            ii.created_at, ii.updated_at, ii.deleted_at
+     from ${schemaQ}.inventory_item ii
+     ${whereSql}
+     order by ii.created_at desc
+     limit $${values.length - 1}
+     offset $${values.length}`,
+    values
+  )
+
+  const inventory_items = await Promise.all(
+    rowsResult.rows.map(async (row) => {
+      const levels = await loadInventoryLevelRows(schema, row.id)
+      const mappedLevels = levels.map(mapInventoryLevel)
+      const stocked_quantity = mappedLevels.reduce(
+        (sum, level) => sum + level.stocked_quantity,
+        0
+      )
+      const reserved_quantity = mappedLevels.reduce(
+        (sum, level) => sum + level.reserved_quantity,
+        0
+      )
+
+      return {
+        id: row.id,
+        sku: row.sku,
+        origin_country: row.origin_country,
+        hs_code: row.hs_code,
+        mid_code: row.mid_code,
+        material: row.material,
+        weight: row.weight,
+        length: row.length,
+        height: row.height,
+        width: row.width,
+        requires_shipping: row.requires_shipping,
+        description: row.description,
+        title: row.title,
+        thumbnail: row.thumbnail,
+        metadata: row.metadata,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        deleted_at: row.deleted_at,
+        stocked_quantity,
+        reserved_quantity,
+        location_levels: mappedLevels,
+      }
+    })
+  )
+
+  return {
+    inventory_items,
+    count: countResult.rows[0]?.count ?? 0,
+    offset,
+    limit,
+  }
+}
+
 export async function loadTenantInventoryItem(schema: string, id: string) {
   const schemaQ = quoteSchema(schema)
   const result = await getPlatformPool().query<InventoryItemRow>(
@@ -564,6 +679,132 @@ async function runBatchInventoryLevels(
     created: created.map(mapInventoryLevel),
     updated: updated.map(mapInventoryLevel),
     deleted,
+  }
+}
+
+function readQueryString(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value.trim()) {
+    return undefined
+  }
+
+  return value.trim()
+}
+
+export async function tenantAdminInventoryItemsListShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveStockLocationRequestSchema(req)
+    if (!schema) {
+      next()
+      return
+    }
+
+    const limit = Math.min(Number(req.query.limit ?? 20) || 20, 100)
+    const offset = Number(req.query.offset ?? 0) || 0
+    const q = readQueryString(req.query.q)
+    const id = readQueryString(req.query.id)
+    const sku = readQueryString(req.query.sku)
+
+    let locationId: string | undefined
+    const locationLevels = req.query.location_levels
+    if (
+      locationLevels &&
+      typeof locationLevels === "object" &&
+      !Array.isArray(locationLevels)
+    ) {
+      const nested = (locationLevels as { location_id?: unknown }).location_id
+      locationId = readQueryString(nested)
+    }
+
+    const result = await loadInventoryItemsList(schema, {
+      limit,
+      offset,
+      q,
+      id,
+      sku,
+      locationId,
+    })
+
+    res.json(result)
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function tenantAdminInventoryItemByIdGetShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveStockLocationRequestSchema(req)
+    if (!schema) {
+      next()
+      return
+    }
+
+    const id = req.params.id
+    if (!id) {
+      next()
+      return
+    }
+
+    const inventory_item = await loadTenantInventoryItem(schema, id)
+    if (!inventory_item) {
+      throw new MedusaError(
+        MedusaError.Types.NOT_FOUND,
+        `Inventory item with id: ${id} was not found`
+      )
+    }
+
+    res.json({ inventory_item })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function tenantAdminInventoryItemLocationLevelsGetShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveStockLocationRequestSchema(req)
+    if (!schema) {
+      next()
+      return
+    }
+
+    const id = req.params.id
+    if (!id) {
+      next()
+      return
+    }
+
+    await assertInventoryItemExists(schema, id)
+
+    const limit = Math.min(Number(req.query.limit ?? 50) || 50, 100)
+    const offset = Number(req.query.offset ?? 0) || 0
+    const locationId = readQueryString(req.query.location_id)
+    const levels = await loadInventoryLevelRows(schema, id)
+    const filtered = locationId
+      ? levels.filter((level) => level.location_id === locationId)
+      : levels
+    const inventory_levels = filtered
+      .slice(offset, offset + limit)
+      .map(mapInventoryLevel)
+
+    res.json({
+      inventory_levels,
+      count: filtered.length,
+      offset,
+      limit,
+    })
+  } catch (error) {
+    next(error)
   }
 }
 
