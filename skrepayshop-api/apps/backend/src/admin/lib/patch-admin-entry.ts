@@ -1,11 +1,21 @@
 const BOOTSTRAP_IMPORT = 'import "../../src/admin/lib/admin-bootstrap"'
+const ORDERS_ENTRY_IMPORT = 'import "../../src/admin/patches/skrepay-orders-list-entry"'
 
 export function patchAdminEntrySource(content: string): string {
-  if (content.includes("admin-bootstrap")) {
-    return content
+  let patched = content
+
+  if (!content.includes("admin-bootstrap")) {
+    patched = `${BOOTSTRAP_IMPORT}\n${content}`
   }
 
-  return `${BOOTSTRAP_IMPORT}\n${content}`
+  if (!patched.includes("skrepay-orders-list-entry")) {
+    patched = patched.replace(
+      /import "\.\.\/\.\.\/src\/admin\/lib\/admin-bootstrap"\n/,
+      `${BOOTSTRAP_IMPORT}\n${ORDERS_ENTRY_IMPORT}\n`
+    )
+  }
+
+  return patched
 }
 
 export function patchAdminEntryVitePlugin() {
