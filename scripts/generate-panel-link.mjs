@@ -23,6 +23,7 @@ const base =
   "https://skrepayshop-api.onrender.com"
 const email = loadEnv("LUIGI_ADMIN_EMAIL") || "gmzulia01@gmail.com"
 const password = loadEnv("LUIGI_ADMIN_PASSWORD") || loadEnv("TEST_ADMIN_PASSWORD")
+const redirectPath = process.argv[2] || "/app/orders"
 
 const loginRes = await fetch(`${base}/skrepay/auth/login`, {
   method: "POST",
@@ -38,11 +39,12 @@ if (!loginRes.ok) {
 const { token } = await loginRes.json()
 const bridge = new URL("/skrepay/session-bridge", base)
 bridge.searchParams.set("token", token)
+bridge.searchParams.set("redirect", redirectPath)
 
 console.log("LOGIN (recomendado):")
 console.log("https://skrepay.com/login")
 console.log("")
-console.log("ACCESO DIRECTO AL PANEL (usa este enlace ahora):")
+console.log("ACCESO DIRECTO AL PANEL:")
 console.log(bridge.toString())
 console.log("")
 console.log("REGIONES (después del login):")
