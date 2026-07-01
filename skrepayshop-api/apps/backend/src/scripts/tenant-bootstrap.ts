@@ -9,7 +9,6 @@ import {
 
 function buildAuthInput(email: string, password: string): AuthenticationInput {
   return {
-    actor_type: "user",
     body: { email, password },
     query: {},
     headers: {},
