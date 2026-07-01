@@ -19,6 +19,10 @@ import {
   resolveTenantForAdminRequest,
   resolveTenantSchema,
 } from "./tenant-db-scope"
+import {
+  resolveCatalogSchemaForTenantSchema,
+  uniqueSchemas,
+} from "./tenant-catalog-schema"
 
 type ScopedRequest = MedusaRequest & {
   skrepayTenantSchema?: string
@@ -399,6 +403,45 @@ export async function tenantAdminStoresShim(
   }
 }
 
+async function loadMergedSalesChannels(
+  tenantSchema: string,
+  preferredChannelId?: string | null
+) {
+  const catalogSchema = await resolveCatalogSchemaForTenantSchema(tenantSchema)
+  const schemas = uniqueSchemas([tenantSchema, catalogSchema])
+  const byId = new Map<string, Record<string, unknown>>()
+
+  for (const schema of schemas) {
+    const result = await getPlatformPool().query(
+      `select
+         id, name, description, is_disabled, metadata, created_at, updated_at
+       from ${quoteSchema(schema)}.sales_channel
+       where deleted_at is null
+       order by created_at asc`
+    )
+
+    for (const row of result.rows) {
+      byId.set(row.id, row)
+    }
+  }
+
+  const channels = [...byId.values()]
+
+  channels.sort((a, b) => {
+    const aId = String(a.id)
+    const bId = String(b.id)
+
+    if (preferredChannelId) {
+      if (aId === preferredChannelId) return -1
+      if (bId === preferredChannelId) return 1
+    }
+
+    return String(a.name).localeCompare(String(b.name))
+  })
+
+  return channels
+}
+
 export async function tenantAdminSalesChannelsShim(
   req: MedusaRequest,
   res: MedusaResponse,
@@ -411,19 +454,17 @@ export async function tenantAdminSalesChannelsShim(
       return
     }
 
-    const result = await getPlatformPool().query(
-      `select
-         id, name, description, is_disabled, metadata, created_at, updated_at
-       from ${quoteSchema(schema)}.sales_channel
-       where deleted_at is null
-       order by created_at asc`
+    const tenant = await resolveTenantForAdminRequest(req)
+    const sales_channels = await loadMergedSalesChannels(
+      schema,
+      tenant?.medusa_sales_channel_id
     )
 
     res.json({
-      sales_channels: result.rows,
-      count: result.rows.length,
+      sales_channels,
+      count: sales_channels.length,
       offset: 0,
-      limit: result.rows.length,
+      limit: sales_channels.length,
     })
   } catch (error) {
     next(error)
@@ -449,15 +490,23 @@ export async function tenantAdminSalesChannelByIdGetShim(
       return
     }
 
-    const result = await getPlatformPool().query(
-      `select
-         id, name, description, is_disabled, metadata, created_at, updated_at
-       from ${quoteSchema(schema)}.sales_channel
-       where id = $1 and deleted_at is null`,
-      [id]
-    )
+    const catalogSchema = await resolveCatalogSchemaForTenantSchema(schema)
+    let sales_channel: Record<string, unknown> | undefined
 
-    const sales_channel = result.rows[0]
+    for (const searchSchema of uniqueSchemas([schema, catalogSchema])) {
+      const result = await getPlatformPool().query(
+        `select
+           id, name, description, is_disabled, metadata, created_at, updated_at
+         from ${quoteSchema(searchSchema)}.sales_channel
+         where id = $1 and deleted_at is null`,
+        [id]
+      )
+
+      if (result.rows[0]) {
+        sales_channel = result.rows[0]
+        break
+      }
+    }
 
     if (!sales_channel) {
       throw new MedusaError(

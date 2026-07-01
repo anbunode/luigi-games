@@ -3,6 +3,11 @@ import { products as mockProducts, type Product } from "@/lib/mock-data"
 import { sdk, medusaConfigured } from "./config"
 import { getDefaultRegion } from "./regions"
 import { mapMedusaProduct } from "./map-product"
+import { siteConfig } from "@/lib/config/site"
+
+const storeHeaders = {
+  "x-skrepay-tenant": siteConfig.tenantId,
+}
 
 export type ProductSource = "medusa" | "mock"
 
@@ -46,6 +51,7 @@ export async function listProducts(options?: {
       count: number
     }>("/store/products", {
       method: "GET",
+      headers: storeHeaders,
       query: {
         limit,
         offset,
@@ -90,6 +96,7 @@ export async function getProductByHandle(
       products: HttpTypes.StoreProduct[]
     }>("/store/products", {
       method: "GET",
+      headers: storeHeaders,
       query: {
         handle,
         limit: 1,

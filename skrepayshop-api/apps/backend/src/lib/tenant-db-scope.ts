@@ -14,8 +14,17 @@ import {
   resolveStoreTenant,
 } from "./tenant-context"
 import { tenantSchemaName, tenantHasDedicatedDatabase } from "./tenant-provisioner"
-import { bindRequestTenantSchema, runWithTenantSchema } from "./tenant-schema-context"
+import {
+  bindRequestTenantSchema,
+  bindRequestSearchPathSchemas,
+  runWithTenantSchema,
+} from "./tenant-schema-context"
 import { ensureTenantPoolPatches } from "./tenant-pg-pool-patch"
+import {
+  buildAdminSearchPathSchemas,
+  formatSearchPathSql,
+  resolveCatalogSchemaForTenantSchema,
+} from "./tenant-catalog-schema"
 
 type ScopedRequest = MedusaRequest & {
   skrepayTenantSchema?: string | null
@@ -26,10 +35,6 @@ type ScopedRequest = MedusaRequest & {
       app_metadata?: Record<string, unknown>
     }
   }
-}
-
-function quoteIdentifier(value: string): string {
-  return `"${value.replace(/"/g, '""')}"`
 }
 
 export function resolveTenantSchema(tenant: SkrepayTenant): string | null {
@@ -46,9 +51,11 @@ export function resolveTenantSchema(tenant: SkrepayTenant): string | null {
 
 async function applySearchPath(
   scope: MedusaContainer,
-  schema: string
+  schemas: string | string[]
 ): Promise<void> {
-  const schemaSql = `SET search_path TO ${quoteIdentifier(schema)}`
+  const schemaSql = formatSearchPathSql(
+    Array.isArray(schemas) ? schemas : [schemas]
+  )
 
   try {
     const knex = scope.resolve(ContainerRegistrationKeys.PG_CONNECTION) as {
@@ -85,9 +92,9 @@ async function resetSearchPath(scope: MedusaContainer): Promise<void> {
 
 export async function setTenantSearchPath(
   scope: MedusaContainer,
-  schema: string
+  schemas: string | string[]
 ): Promise<void> {
-  await applySearchPath(scope, schema)
+  await applySearchPath(scope, schemas)
 }
 
 export async function resetTenantSearchPath(
@@ -103,12 +110,17 @@ export async function withTenantSchema<T>(
 ): Promise<T> {
   ensureTenantPoolPatches(scope)
 
+  const catalogSchema = await resolveCatalogSchemaForTenantSchema(schema)
+  const searchPathSchemas = buildAdminSearchPathSchemas(schema, catalogSchema)
+
   return runWithTenantSchema(schema, async () => {
-    await setTenantSearchPath(scope, schema)
+    bindRequestSearchPathSchemas(searchPathSchemas)
+    await setTenantSearchPath(scope, searchPathSchemas)
 
     try {
       return await fn()
     } finally {
+      bindRequestSearchPathSchemas(undefined)
       await resetTenantSearchPath(scope)
     }
   })
@@ -179,9 +191,14 @@ async function applyTenantScope(
   }
 
   ensureTenantPoolPatches(req.scope)
-  await setTenantSearchPath(req.scope, schema)
+
+  const catalogSchema = await resolveCatalogSchemaForTenantSchema(schema)
+  const searchPathSchemas = buildAdminSearchPathSchemas(schema, catalogSchema)
+
+  await setTenantSearchPath(req.scope, searchPathSchemas)
 
   bindRequestTenantSchema(schema)
+  bindRequestSearchPathSchemas(searchPathSchemas)
   ;(req as ScopedRequest).skrepayTenantSchema = schema
 
   let cleanedUp = false
@@ -192,6 +209,7 @@ async function applyTenantScope(
 
     cleanedUp = true
     bindRequestTenantSchema(undefined)
+    bindRequestSearchPathSchemas(undefined)
     resetSearchPath(req.scope).catch(() => undefined)
   }
 

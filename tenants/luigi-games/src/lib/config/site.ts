@@ -4,7 +4,7 @@ export const siteConfig = {
   url: process.env.NEXT_PUBLIC_SITE_URL || "https://luigigame.com",
   description:
     "Marketplace gaming para LATAM. Juegos, gift cards, software y más.",
-  tenantId: process.env.NEXT_PUBLIC_TENANT_ID || "luigi-games",
+  tenantId: process.env.NEXT_PUBLIC_TENANT_ID || "luigi-game",
   platformName: "SkrepayShop",
   platformUrl:
     process.env.NEXT_PUBLIC_PLATFORM_URL ||

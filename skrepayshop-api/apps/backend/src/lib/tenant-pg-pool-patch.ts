@@ -1,7 +1,8 @@
 import type { MedusaContainer } from "@medusajs/framework"
 import type { EntityManager } from "@mikro-orm/knex"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import { getActiveTenantSchema } from "./tenant-schema-context"
+import { getActiveSearchPathSchemas } from "./tenant-schema-context"
+import { formatSearchPathSql } from "./tenant-catalog-schema"
 
 const patchedPools = new WeakSet<object>()
 
@@ -32,9 +33,16 @@ type ConnectionLike = {
 }
 
 function searchPathSql(schema: string | null | undefined): string {
-  return schema
-    ? `SET search_path TO ${quoteIdentifier(schema)}`
-    : "SET search_path TO public"
+  if (schema) {
+    return formatSearchPathSql([schema])
+  }
+
+  const schemas = getActiveSearchPathSchemas()
+  if (schemas?.length) {
+    return formatSearchPathSql(schemas)
+  }
+
+  return "SET search_path TO public"
 }
 
 async function applySearchPathOnConnection(
@@ -76,6 +84,35 @@ async function setClientSearchPath(
   }
 }
 
+async function resetClientSearchPath(client: PgClient): Promise<void> {
+  const sql = "SET search_path TO public"
+
+  if (typeof client.query !== "function") {
+    return
+  }
+
+  try {
+    const result = client.query(sql)
+
+    if (result && typeof (result as Promise<unknown>).then === "function") {
+      await result
+      return
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      client.query!(sql, (err) => {
+        if (err) {
+          reject(err)
+          return
+        }
+        resolve()
+      })
+    })
+  } catch {
+    // ignore
+  }
+}
+
 export function patchPgPool(pool: TarnPool | null | undefined): void {
   if (!pool?.acquire || patchedPools.has(pool)) {
     return
@@ -86,10 +123,9 @@ export function patchPgPool(pool: TarnPool | null | undefined): void {
   const originalAcquire = pool.acquire.bind(pool)
   pool.acquire = async () => {
     const resource = await originalAcquire()
-    const schema = getActiveTenantSchema()
 
-    if (schema) {
-      await setClientSearchPath(resource, schema)
+    if (getActiveSearchPathSchemas()?.length) {
+      await setClientSearchPath(resource, null)
     }
 
     return resource
@@ -98,17 +134,13 @@ export function patchPgPool(pool: TarnPool | null | undefined): void {
   if (typeof pool.release === "function") {
     const originalRelease = pool.release.bind(pool)
     pool.release = async (resource: PgClient) => {
-      if (getActiveTenantSchema()) {
-        await setClientSearchPath(resource, null)
+      if (getActiveSearchPathSchemas()?.length) {
+        await resetClientSearchPath(resource)
       }
 
       return originalRelease(resource)
     }
   }
-}
-
-function quoteIdentifier(value: string): string {
-  return `"${value.replace(/"/g, '""')}"`
 }
 
 function patchKnexClient(client: KnexClient | null | undefined): void {
@@ -127,10 +159,9 @@ function patchKnexClient(client: KnexClient | null | undefined): void {
   const originalAcquireConnection = client.acquireConnection.bind(client)
   client.acquireConnection = async () => {
     const resource = await originalAcquireConnection()
-    const schema = getActiveTenantSchema()
 
-    if (schema) {
-      await setClientSearchPath(resource, schema)
+    if (getActiveSearchPathSchemas()?.length) {
+      await setClientSearchPath(resource, null)
     }
 
     return resource
@@ -150,14 +181,14 @@ function patchManagerConnection(connection: ConnectionLike | null | undefined): 
 
   const originalExecute = connection.execute.bind(connection)
   connection.execute = async (sql: string, params?: unknown[]) => {
-    const schema = getActiveTenantSchema()
+    const schemas = getActiveSearchPathSchemas()
 
     if (
-      schema &&
+      schemas?.length &&
       typeof sql === "string" &&
       !sql.trimStart().toUpperCase().startsWith("SET SEARCH_PATH")
     ) {
-      await applySearchPathOnConnection(originalExecute, schema)
+      await applySearchPathOnConnection(originalExecute, null)
     }
 
     return originalExecute(sql, params)

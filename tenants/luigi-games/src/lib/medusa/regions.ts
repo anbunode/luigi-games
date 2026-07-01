@@ -1,5 +1,10 @@
 import { sdk } from "./config"
 import type { HttpTypes } from "@medusajs/types"
+import { siteConfig } from "@/lib/config/site"
+
+const storeHeaders = {
+  "x-skrepay-tenant": siteConfig.tenantId,
+}
 
 let cachedRegionId: string | null = null
 
@@ -11,6 +16,7 @@ export async function getDefaultRegion(): Promise<HttpTypes.StoreRegion | null> 
       regions: HttpTypes.StoreRegion[]
     }>("/store/regions", {
       method: "GET",
+      headers: storeHeaders,
       cache: "no-store",
     })
 

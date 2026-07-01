@@ -11,6 +11,38 @@ export type CatalogSchemaContext = {
   catalogSchema: string
 }
 
+export async function resolveCatalogSchemaForTenantSchema(
+  tenantSchema: string
+): Promise<string> {
+  const schemaQ = quoteSchema(tenantSchema)
+  const result = await getPlatformPool().query<{ count: number }>(
+    `select count(*)::int as count
+     from ${schemaQ}.product
+     where deleted_at is null`
+  )
+
+  return (result.rows[0]?.count ?? 0) > 0 ? tenantSchema : "public"
+}
+
+export function buildAdminSearchPathSchemas(
+  tenantSchema: string,
+  catalogSchema: string
+): string[] {
+  if (catalogSchema === tenantSchema) {
+    return [tenantSchema]
+  }
+
+  return uniqueSchemas([catalogSchema, tenantSchema])
+}
+
+export function formatSearchPathSql(schemas: string[]): string {
+  if (schemas.length === 0) {
+    return "SET search_path TO public"
+  }
+
+  return `SET search_path TO ${schemas.map(quoteSchema).join(", ")}`
+}
+
 export async function resolveCatalogSchemaContext(
   req: MedusaRequest
 ): Promise<CatalogSchemaContext | null> {
@@ -19,15 +51,7 @@ export async function resolveCatalogSchemaContext(
     return null
   }
 
-  const schemaQ = quoteSchema(tenantSchema)
-  const result = await getPlatformPool().query<{ count: number }>(
-    `select count(*)::int as count
-     from ${schemaQ}.product
-     where deleted_at is null`
-  )
-
-  const catalogSchema =
-    (result.rows[0]?.count ?? 0) > 0 ? tenantSchema : "public"
+  const catalogSchema = await resolveCatalogSchemaForTenantSchema(tenantSchema)
 
   return { tenantSchema, catalogSchema }
 }
