@@ -18,6 +18,10 @@ type DraftCreateBody = {
   region_id?: string
 }
 
+type ValidatedRequest = MedusaRequest & {
+  validatedBody?: DraftCreateBody
+}
+
 function quoteSchema(schema: string): string {
   return `"${schema.replace(/"/g, '""')}"`
 }
@@ -81,7 +85,45 @@ export async function tenantDraftOrderCreateMiddleware(
   if (!body.sales_channel_id) {
     body.sales_channel_id = defaults.default_sales_channel_id
     req.body = body
+
+    const validated = (req as ValidatedRequest).validatedBody
+    if (validated && !validated.sales_channel_id) {
+      validated.sales_channel_id = defaults.default_sales_channel_id
+    }
   }
+
+  next()
+}
+
+export async function tenantDraftOrderConvertMiddleware(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  const schema = await resolveRequestSchema(req)
+  const id = typeof req.params?.id === "string" ? req.params.id : null
+
+  if (!schema || !id) {
+    next()
+    return
+  }
+
+  const defaults = await loadTenantStoreDefaults(schema)
+
+  if (!defaults?.default_sales_channel_id) {
+    next()
+    return
+  }
+
+  await getPlatformPool().query(
+    `update public."order"
+     set sales_channel_id = $2, updated_at = now()
+     where id = $1
+       and status = 'draft'
+       and deleted_at is null
+       and (sales_channel_id is null or sales_channel_id <> $2)`,
+    [id, defaults.default_sales_channel_id]
+  )
 
   next()
 }
