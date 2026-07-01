@@ -1,5 +1,4 @@
-import { readFileSync } from "fs"
-import { readdirSync } from "fs"
+import { readFileSync, readdirSync } from "fs"
 import { resolve, dirname } from "path"
 import { fileURLToPath } from "url"
 
@@ -20,16 +19,32 @@ const bundles = readdirSync(assetsDir)
 const main = bundles[0]
 console.log("main bundle:", main.name, main.size)
 
-const checks = [
-  ["custom Spanish list (should be false)", "Cargando borradores"],
-  ["custom composer (should be false)", "borrador@pendiente.local"],
-  ["native draft plugin", "@medusajs/draft-order"],
-  ["medusa draft items route", "/draft-orders/:id/items"],
-  ["medusa convert", "convert-to-order"],
-  ["order draft link widget", "Usa un borrador"],
-  ["plugin draft list path", 'path:"/draft-orders"'],
+const forbidden = [
+  ["custom Spanish list", "Cargando borradores"],
+  ["custom composer email", "borrador@pendiente.local"],
+  ["custom order CTA", "Usa un borrador"],
+  ['custom route /borradores', 'path:"/borradores"'],
 ]
 
-for (const [label, needle] of checks) {
-  console.log(`${label}:`, main.content.includes(needle))
+const required = [
+  ["native draft list route", 'path:"/draft-orders"'],
+  ["native draft domain", "draftOrders.domain"],
+  ["native items route", "/draft-orders/:id/items"],
+  ["native convert action", "convert-to-order"],
+]
+
+let failed = false
+
+for (const [label, needle] of forbidden) {
+  const found = main.content.includes(needle)
+  console.log(`${label} (must be false):`, found)
+  if (found) failed = true
 }
+
+for (const [label, needle] of required) {
+  const found = main.content.includes(needle)
+  console.log(`${label} (must be true):`, found)
+  if (!found) failed = true
+}
+
+process.exit(failed ? 1 : 0)
