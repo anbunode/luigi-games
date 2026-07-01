@@ -848,3 +848,110 @@ export async function tenantAdminPricePreferenceByIdDeleteShim(
     next(error)
   }
 }
+
+async function loadMergedRegions(tenantSchema: string) {
+  const catalogSchema = await resolveCatalogSchemaForTenantSchema(tenantSchema)
+  const schemas = uniqueSchemas([tenantSchema, catalogSchema])
+  const byId = new Map<string, Record<string, unknown>>()
+
+  for (const schema of schemas) {
+    const result = await getPlatformPool().query(
+      `select id, name, currency_code, created_at, updated_at
+       from ${quoteSchema(schema)}.region
+       where deleted_at is null
+       order by created_at asc`
+    )
+
+    for (const row of result.rows) {
+      byId.set(String(row.id), row)
+    }
+  }
+
+  return [...byId.values()].sort((a, b) =>
+    String(a.name).localeCompare(String(b.name))
+  )
+}
+
+async function loadMergedCustomers(
+  tenantSchema: string,
+  limit: number,
+  offset: number
+) {
+  const catalogSchema = await resolveCatalogSchemaForTenantSchema(tenantSchema)
+  const schemas = uniqueSchemas([tenantSchema, catalogSchema])
+  const byId = new Map<string, Record<string, unknown>>()
+
+  for (const schema of schemas) {
+    const result = await getPlatformPool().query(
+      `select id, email, first_name, last_name, created_at, updated_at
+       from ${quoteSchema(schema)}.customer
+       where deleted_at is null
+       order by created_at desc`
+    )
+
+    for (const row of result.rows) {
+      byId.set(String(row.id), row)
+    }
+  }
+
+  const customers = [...byId.values()].sort((a, b) =>
+    String(a.email ?? "").localeCompare(String(b.email ?? ""))
+  )
+
+  return {
+    customers: customers.slice(offset, offset + limit),
+    count: customers.length,
+  }
+}
+
+export async function tenantAdminRegionsListShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveRequestSchema(req)
+    if (!schema) {
+      next()
+      return
+    }
+
+    const regions = await loadMergedRegions(schema)
+
+    res.json({
+      regions,
+      count: regions.length,
+      offset: 0,
+      limit: regions.length,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function tenantAdminCustomersListShim(
+  req: MedusaRequest,
+  res: MedusaResponse,
+  next: MedusaNextFunction
+) {
+  try {
+    const schema = await resolveRequestSchema(req)
+    if (!schema) {
+      next()
+      return
+    }
+
+    const limit = Math.min(Number(req.query.limit ?? 20) || 20, 1000)
+    const offset = Number(req.query.offset ?? 0) || 0
+    const { customers, count } = await loadMergedCustomers(schema, limit, offset)
+
+    res.json({
+      customers,
+      count,
+      offset,
+      limit,
+    })
+  } catch (error) {
+    next(error)
+  }
+}

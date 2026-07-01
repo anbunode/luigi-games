@@ -21,9 +21,13 @@ type DraftCreateBody = {
 type DraftRow = {
   region_id?: string | null
   sales_channel_id?: string | null
+  customer_id?: string | null
+  email?: string | null
   region?: { id?: string; name?: string } | null
   sales_channel?: { id?: string; name?: string } | null
+  customer?: { id?: string; email?: string } | null
   currency_code?: string | null
+  total?: number | null
 }
 
 type ValidatedRequest = MedusaRequest & {
@@ -35,14 +39,35 @@ function patchDraftRelations<T extends DraftRow>(draft: T): T {
 
   if (next.region_id && !next.region) {
     next.region = { id: next.region_id, name: "—" }
+  } else if (next.region && !next.region.name) {
+    next.region = { ...next.region, name: "—" }
   }
 
   if (next.sales_channel_id && !next.sales_channel) {
     next.sales_channel = { id: next.sales_channel_id, name: "—" }
+  } else if (next.sales_channel && !next.sales_channel.name) {
+    next.sales_channel = { ...next.sales_channel, name: "—" }
+  }
+
+  if (next.customer_id && !next.customer) {
+    next.customer = {
+      id: next.customer_id,
+      email: typeof next.email === "string" && next.email.trim() ? next.email : "—",
+    }
+  } else if (next.customer && !next.customer.email) {
+    next.customer = {
+      ...next.customer,
+      email:
+        typeof next.email === "string" && next.email.trim() ? next.email : "—",
+    }
   }
 
   if (!next.currency_code) {
     next.currency_code = "usd"
+  }
+
+  if (next.total == null) {
+    next.total = 0
   }
 
   return next

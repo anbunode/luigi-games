@@ -205,6 +205,21 @@ function mapAddress(row: StockLocationRow): StockLocationAddressRow | null {
   }
 }
 
+function buildMinimalStockLocation(row: StockLocationRow): TenantStockLocation {
+  return sanitizeStockLocation({
+    id: row.id,
+    name: row.name,
+    metadata: row.metadata,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    deleted_at: row.deleted_at,
+    address: mapAddress(row),
+    sales_channels: [],
+    fulfillment_sets: [],
+    fulfillment_providers: [],
+  })
+}
+
 function parseRuleValue(value: unknown): string | boolean {
   if (typeof value === "boolean") {
     return value
@@ -511,7 +526,13 @@ async function loadStockLocationRows(
   )
 
   const rows = await Promise.all(
-    rowsResult.rows.map((row) => hydrateStockLocation(schema, row))
+    rowsResult.rows.map(async (row) => {
+      try {
+        return await hydrateStockLocation(schema, row)
+      } catch {
+        return buildMinimalStockLocation(row)
+      }
+    })
   )
 
   return {

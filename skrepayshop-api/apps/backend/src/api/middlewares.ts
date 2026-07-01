@@ -18,6 +18,8 @@ import {
   tenantAdminStoreByIdPostShim,
   tenantAdminStoresShim,
   tenantAdminUsersMeShim,
+  tenantAdminRegionsListShim,
+  tenantAdminCustomersListShim,
 } from "../lib/tenant-admin-shim"
 import {
   tenantAdminStockLocationByIdGetShim,
@@ -106,6 +108,16 @@ export default defineMiddlewares({
       method: "GET",
       matcher: "/admin/sales-channels/:id",
       middlewares: [tenantAdminSalesChannelByIdGetShim],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/regions",
+      middlewares: [tenantAdminRegionsListShim],
+    },
+    {
+      method: "GET",
+      matcher: "/admin/customers",
+      middlewares: [tenantAdminCustomersListShim],
     },
     {
       method: "GET",
