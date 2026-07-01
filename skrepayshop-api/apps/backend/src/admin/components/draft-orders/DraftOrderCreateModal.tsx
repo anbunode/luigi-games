@@ -51,11 +51,13 @@ function createInitialState() {
 type DraftOrderCreateModalProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onCreated?: (draftId: string) => void
 }
 
 export function DraftOrderCreateModal({
   open,
   onOpenChange,
+  onCreated,
 }: DraftOrderCreateModalProps) {
   const formId = useId()
   const queryClient = useQueryClient()
@@ -180,7 +182,7 @@ export function DraftOrderCreateModal({
       queryClient.invalidateQueries({ queryKey: ["skrepay", "draft-orders"] })
       toast.success("Borrador creado")
       onOpenChange(false)
-      window.location.href = `/app/draft-orders/${draft.id}`
+      onCreated?.(draft.id)
     },
     onError: (error: Error) => {
       toast.error(error.message || "No se pudo crear el borrador")

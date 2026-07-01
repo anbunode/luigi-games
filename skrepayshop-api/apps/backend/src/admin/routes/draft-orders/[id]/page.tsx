@@ -1,14 +1,12 @@
 import { useParams } from "react-router-dom"
-import { DraftOrderDetailPage } from "../../../components/draft-orders/DraftOrderDetailPage"
+import { DraftOrdersListPage } from "../../../components/draft-orders/DraftOrdersListPage"
 
-const DraftOrderDetailRoute = () => {
+export default function DraftOrderDetailRoute() {
   const { id } = useParams()
 
   if (!id) {
     return null
   }
 
-  return <DraftOrderDetailPage id={id} />
+  return <DraftOrdersListPage openWorkspaceId={id} />
 }
-
-export default DraftOrderDetailRoute

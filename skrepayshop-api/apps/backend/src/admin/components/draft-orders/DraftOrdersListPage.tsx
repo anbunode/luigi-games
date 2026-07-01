@@ -1,7 +1,8 @@
 import { Badge, Button, Text } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
-import { useLayoutEffect, useState } from "react"
+import { useEffect, useLayoutEffect, useState } from "react"
 import { DraftOrderCreateModal } from "./DraftOrderCreateModal"
+import { DraftOrderWorkspaceModal } from "./DraftOrderWorkspaceModal"
 import { DraftOrdersShell, DraftPanelCard } from "./DraftOrdersShell"
 import {
   fetchDraftOrders,
@@ -12,16 +13,30 @@ import { installAuthBridge } from "../../lib/auth-bridge"
 
 type DraftOrdersListPageProps = {
   openCreate?: boolean
+  openWorkspaceId?: string
 }
 
 export function DraftOrdersListPage({
   openCreate = false,
+  openWorkspaceId,
 }: DraftOrdersListPageProps) {
   useLayoutEffect(() => {
     installAuthBridge()
   }, [])
 
   const [createOpen, setCreateOpen] = useState(openCreate)
+  const [workspaceId, setWorkspaceId] = useState<string | null>(
+    openWorkspaceId ?? null
+  )
+  const [workspaceOpen, setWorkspaceOpen] = useState(Boolean(openWorkspaceId))
+  const [autoOpenEditItems, setAutoOpenEditItems] = useState(false)
+
+  useEffect(() => {
+    if (openWorkspaceId) {
+      setWorkspaceId(openWorkspaceId)
+      setWorkspaceOpen(true)
+    }
+  }, [openWorkspaceId])
 
   const draftsQuery = useQuery({
     queryKey: ["skrepay", "draft-orders", "list"],
@@ -30,6 +45,15 @@ export function DraftOrdersListPage({
   })
 
   const drafts = draftsQuery.data ?? []
+
+  const openWorkspace = (id: string, openEditItems = false) => {
+    setWorkspaceId(id)
+    setWorkspaceOpen(true)
+    setAutoOpenEditItems(openEditItems)
+    if (window.location.pathname.endsWith("/create")) {
+      window.history.replaceState({}, "", "/app/draft-orders")
+    }
+  }
 
   return (
     <>
@@ -92,12 +116,13 @@ export function DraftOrdersListPage({
                       className="border-b border-ui-border-base last:border-0 hover:bg-ui-bg-base-hover"
                     >
                       <td className="px-5 py-4">
-                        <a
-                          href={`/app/draft-orders/${draft.id}`}
+                        <button
+                          type="button"
                           className="text-ui-fg-interactive font-medium hover:underline"
+                          onClick={() => openWorkspace(draft.id)}
                         >
                           #{draft.display_id}
-                        </a>
+                        </button>
                       </td>
                       <td className="px-5 py-4">
                         {draft.customer?.email ?? draft.email ?? "—"}
@@ -131,6 +156,23 @@ export function DraftOrdersListPage({
           setCreateOpen(open)
           if (!open && openCreate && window.location.pathname.endsWith("/create")) {
             window.history.replaceState({}, "", "/app/draft-orders")
+          }
+        }}
+        onCreated={(draftId) => openWorkspace(draftId, true)}
+      />
+
+      <DraftOrderWorkspaceModal
+        draftId={workspaceId}
+        open={workspaceOpen && Boolean(workspaceId)}
+        autoOpenEditItems={autoOpenEditItems}
+        onOpenChange={(open) => {
+          setWorkspaceOpen(open)
+          if (!open) {
+            setWorkspaceId(null)
+            setAutoOpenEditItems(false)
+            if (openWorkspaceId && window.location.pathname.includes("/draft-orders/")) {
+              window.history.replaceState({}, "", "/app/draft-orders")
+            }
           }
         }}
       />
