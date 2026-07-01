@@ -97,20 +97,14 @@ if (!draftId) {
   process.exit(1)
 }
 
-// 3. Begin edit + add line item + confirm (Manage items)
+// 3. Begin edit + add catalog product + confirm (Manage items)
 const editBegin = await api("POST", `/admin/draft-orders/${draftId}/edit`, {})
 record("Begin order edit", editBegin.res.ok)
 
 const addItem = await api("POST", `/admin/draft-orders/${draftId}/edit/items`, {
-  items: [
-    {
-      title: "Medusa guide custom item",
-      quantity: 1,
-      unit_price: 1000,
-    },
-  ],
+  items: [{ variant_id: variantId, quantity: 1 }],
 })
-record("Add custom line item to draft", addItem.res.ok)
+record("Add product to draft", addItem.res.ok)
 
 const confirmEdit = await api("POST", `/admin/draft-orders/${draftId}/edit/confirm`, {})
 record("Confirm item changes", confirmEdit.res.ok)
