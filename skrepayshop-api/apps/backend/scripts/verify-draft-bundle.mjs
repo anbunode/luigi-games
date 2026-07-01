@@ -20,34 +20,17 @@ const main = bundles[0]
 console.log("main bundle:", main.name, main.size)
 
 const forbidden = [
-  ["custom Spanish list", "Cargando borradores"],
-  ["custom composer email", "borrador@pendiente.local"],
-  ["custom order CTA", "Usa un borrador"],
+  ["custom legacy CTA", "Usa un borrador"],
+  ["legacy composer email", "borrador@pendiente.local"],
   ['custom route /borradores', 'path:"/borradores"'],
-  ["legacy borradores path", "/borradores"],
+  ["native draft list UI", "draftOrders.domain"],
 ]
 
-/** Pass if any marker group for the native @medusajs/draft-order plugin matches. */
 const requiredGroups = [
   {
-    label: "draft plugin (routes)",
-    needles: ['path:"/draft-orders"', "/draft-orders/:id/items", "convert-to-order"],
-    min: 1,
-  },
-  {
-    label: "draft plugin (module)",
-    needles: [
-      "draftOrders.domain",
-      "DRAFT_ORDERS_QUERY_KEY",
-      "DraftOrder",
-      "useDraftOrders",
-    ],
-    min: 1,
-  },
-  {
-    label: "draft render patch",
-    needles: ["Could not load draft orders"],
-    min: 1,
+    label: "skrepay draft routes",
+    needles: ['path:"/draft-orders"', "data-skrepay-draft-orders-shell"],
+    min: 2,
   },
 ]
 

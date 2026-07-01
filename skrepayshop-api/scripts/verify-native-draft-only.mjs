@@ -1,5 +1,5 @@
 /**
- * Falla si el bundle admin incluye UI custom de borradores (no Medusa nativo).
+ * Verifica que el admin use la UI Skrepay de borradores (no el plugin nativo roto).
  */
 import { readFileSync, readdirSync } from "fs"
 import { resolve, dirname } from "path"
@@ -12,21 +12,24 @@ const assetsDir = resolve(
 
 const forbidden = [
   "Usa un borrador",
-  "Cargando borradores",
   "borrador@pendiente.local",
   'path:"/borradores"',
   "order-create-draft-cta",
   "DraftOrderComposer",
 ]
 
-const required = ['path:"/draft-orders"', "draftOrders.domain"]
+const required = [
+  "data-skrepay-draft-orders-shell",
+  'path:"/draft-orders"',
+]
 
 let mainBundle = ""
 
 try {
   const files = readdirSync(assetsDir)
-  mainBundle = files.find((f) => /^index-.+\.js$/.test(f) && f !== "index-CX2q6FwY.js") ?? ""
-} catch (error) {
+  mainBundle =
+    files.find((f) => /^index-.+\.js$/.test(f) && f !== "index-CX2q6FwY.js") ?? ""
+} catch {
   console.error("No admin assets — run medusa build first")
   process.exit(1)
 }
@@ -41,20 +44,27 @@ let failed = false
 
 for (const needle of forbidden) {
   if (content.includes(needle)) {
-    console.error(`FAIL: custom draft UI marker found: ${needle}`)
+    console.error(`FAIL: forbidden marker: ${needle}`)
     failed = true
   }
 }
 
 for (const needle of required) {
   if (!content.includes(needle)) {
-    console.error(`FAIL: native draft plugin marker missing: ${needle}`)
+    console.error(`FAIL: required marker missing: ${needle}`)
     failed = true
   }
+}
+
+if (content.includes("draftOrders.domain")) {
+  console.error(
+    "FAIL: native draft-order list UI still bundled (draftOrders.domain)"
+  )
+  failed = true
 }
 
 if (failed) {
   process.exit(1)
 }
 
-console.log(`OK: native draft only (${mainBundle}, ${content.length} bytes)`)
+console.log(`OK: skrepay draft orders UI (${mainBundle}, ${content.length} bytes)`)

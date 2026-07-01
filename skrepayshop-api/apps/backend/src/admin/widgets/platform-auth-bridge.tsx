@@ -24,7 +24,6 @@ const PlatformAuthBridge = () => {
 export const config = defineWidgetConfig({
   zone: [
     "order.list.before",
-    "draft_order.list.before",
     "product.list.before",
     "region.list.before",
     "login.before",
