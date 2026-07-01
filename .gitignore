@@ -18,6 +18,7 @@ out/
 dist/
 .turbo/
 .medusa/
+build-info.json
 
 # Test / scratch
 test-clone/

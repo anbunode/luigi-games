@@ -3,6 +3,8 @@ services:
     name: skrepayshop-api
     runtime: node
     plan: starter
+    branch: main
+    autoDeployTrigger: commit
     rootDir: skrepayshop-api
     buildCommand: npm run render:build
     startCommand: npm run render:start
