@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "render:build": "NPM_CONFIG_PRODUCTION=false npm install --legacy-peer-deps && cd apps/backend && npx medusa build --lint false && node scripts/patch-orders-bundle.mjs && cd ../.. && node scripts/write-build-info.mjs && cd apps/backend && node scripts/verify-draft-bundle.mjs && node scripts/verify-orders-bundle.mjs && cd ../.. && node scripts/verify-native-draft-only.mjs && bash scripts/render-prepare-server.sh",
+    "render:build": "NPM_CONFIG_PRODUCTION=false npm install --legacy-peer-deps && cd apps/backend && npx medusa build --lint false && cd ../.. && node scripts/write-build-info.mjs && cd apps/backend && node scripts/verify-draft-bundle.mjs && cd ../.. && node scripts/verify-native-draft-only.mjs && bash scripts/render-prepare-server.sh",
     "render:start": "cd apps/backend/.medusa/server && npm run predeploy && npm run start",
     "start": "turbo start",
     "lint": "turbo lint",

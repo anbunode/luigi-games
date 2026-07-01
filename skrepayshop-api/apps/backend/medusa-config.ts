@@ -1,7 +1,6 @@
 import { loadEnv, defineConfig } from "@medusajs/framework/utils"
 import { patchAdminEntryVitePlugin } from "./src/admin/lib/patch-admin-entry"
 import { patchDraftOrderVitePlugin } from "./src/admin/lib/patch-draft-order-vite"
-import { patchOrdersVitePlugin } from "./src/admin/lib/patch-orders-vite"
 import { patchRegionCreateCurrencyVitePlugin } from "./src/admin/lib/patch-region-create-currency-vite"
 
 loadEnv(process.env.NODE_ENV || "development", process.cwd())
@@ -39,7 +38,6 @@ module.exports = defineConfig({
         patchAdminEntryVitePlugin(),
         patchRegionCreateCurrencyVitePlugin(),
         patchDraftOrderVitePlugin(),
-        patchOrdersVitePlugin(),
       ],
     }),
   },
