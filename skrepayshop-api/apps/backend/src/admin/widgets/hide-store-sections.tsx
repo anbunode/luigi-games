@@ -1,66 +1,13 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
-import { useLayoutEffect } from "react"
+import { isNativeMedusaAdminUiEnabled } from "../lib/native-admin-ui"
 
-const HIDDEN_HEADINGS = new Set(["locales", "idiomas", "metadata", "metadatos"])
-
-const hideStoreSectionsStyles = `
-  body[data-skrepay-store-settings] .flex.flex-col.gap-y-3 > div:has(a[href="metadata/edit"]),
-  body[data-skrepay-store-settings] .flex.flex-col.gap-y-3 > div:has(a[href$="/metadata/edit"]) {
-    display: none !important;
-  }
-`
-
-function isStoreSettingsPage() {
-  return /\/settings\/store\/?$/.test(window.location.pathname)
-}
-
-function hideStoreSections() {
-  if (!isStoreSettingsPage()) {
-    return
-  }
-
-  document.querySelectorAll("h2").forEach((heading) => {
-    const label = heading.textContent?.trim().toLowerCase()
-    if (!label || !HIDDEN_HEADINGS.has(label)) {
-      return
-    }
-
-    const section = heading.closest("div.divide-y.p-0")
-    if (section instanceof HTMLElement) {
-      section.style.display = "none"
-    }
-  })
-}
-
-function syncStoreSettingsScope() {
-  if (isStoreSettingsPage()) {
-    document.body.setAttribute("data-skrepay-store-settings", "true")
-    hideStoreSections()
-    return
-  }
-
-  document.body.removeAttribute("data-skrepay-store-settings")
-}
-
+/** Disabled while USE_NATIVE_MEDUSA_ADMIN_UI restores native store settings sections. */
 const HideStoreSections = () => {
-  useLayoutEffect(() => {
-    syncStoreSettingsScope()
+  if (isNativeMedusaAdminUiEnabled()) {
+    return null
+  }
 
-    const observer = new MutationObserver(() => {
-      syncStoreSettingsScope()
-    })
-
-    observer.observe(document.body, { childList: true, subtree: true })
-    window.addEventListener("popstate", syncStoreSettingsScope)
-
-    return () => {
-      observer.disconnect()
-      window.removeEventListener("popstate", syncStoreSettingsScope)
-      document.body.removeAttribute("data-skrepay-store-settings")
-    }
-  }, [])
-
-  return <style>{hideStoreSectionsStyles}</style>
+  return null
 }
 
 export const config = defineWidgetConfig({

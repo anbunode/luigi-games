@@ -4,14 +4,11 @@ import { installRegionFormUiBridge } from "./region-form-bridge"
 import { installStoreEditUiBridge } from "./store-edit-bridge"
 import { readLocalCurrencyTaxCheckbox } from "./store-edit-ui"
 import { formatRegionFormCurrencyOptions } from "./region-form-ui"
-import { isSettingsPage, isProductPricingPage, isRegionFormPage, isStoreEditPage, notifyRouteChange } from "./region-routes"
-import { installSettingsSidebarBridge } from "./settings-sidebar-bridge"
-import { installOrdersUiBridge } from "./orders-ui-bridge"
-import { showSettingsLoadingOverlay, shouldShowSettingsLoadingOverlay } from "./settings-loading-overlay"
+import { isProductPricingPage, isRegionFormPage, isStoreEditPage, notifyRouteChange } from "./region-routes"
 import {
-  showOrdersLoadingOverlay,
-  shouldShowOrdersLoadingOverlay,
-} from "./orders-loading-overlay"
+  cleanupSkrepayAdminVisualArtifacts,
+  isNativeMedusaAdminUiEnabled,
+} from "./native-admin-ui"
 
 declare global {
   interface Window {
@@ -272,6 +269,10 @@ export function installAuthBridge() {
 
   window.__skrepayAuthBridgeInstalled = true
 
+  if (isNativeMedusaAdminUiEnabled()) {
+    cleanupSkrepayAdminVisualArtifacts()
+  }
+
   const loginUrl = getPlatformLoginUrl()
   const logoutUrl = getLogoutUrl()
   const originalFetch = window.fetch.bind(window)
@@ -381,12 +382,6 @@ export function installAuthBridge() {
     }
     const result = originalPushState(...args)
     notifyRouteChange()
-    if (shouldShowSettingsLoadingOverlay()) {
-      showSettingsLoadingOverlay()
-    }
-    if (shouldShowOrdersLoadingOverlay()) {
-      showOrdersLoadingOverlay()
-    }
     return result
   }) as History["pushState"]
 
@@ -398,26 +393,10 @@ export function installAuthBridge() {
     }
     const result = originalReplaceState(...args)
     notifyRouteChange()
-    if (shouldShowSettingsLoadingOverlay()) {
-      showSettingsLoadingOverlay()
-    }
-    if (shouldShowOrdersLoadingOverlay()) {
-      showOrdersLoadingOverlay()
-    }
     return result
   }) as History["replaceState"]
 
   installProductPricingBridge()
   installRegionFormUiBridge()
   installStoreEditUiBridge()
-  installSettingsSidebarBridge()
-  installOrdersUiBridge()
-
-  if (isSettingsPage(window.location.pathname)) {
-    showSettingsLoadingOverlay()
-  }
-
-  if (shouldShowOrdersLoadingOverlay()) {
-    showOrdersLoadingOverlay()
-  }
 }

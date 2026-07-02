@@ -1,37 +1,11 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
-import { useLayoutEffect } from "react"
-import { SKREPAY_ROUTE_CHANGE_EVENT } from "../lib/region-routes"
+import { isNativeMedusaAdminUiEnabled } from "../lib/native-admin-ui"
 
-const PROFILE_PATH = /\/settings\/profile(?:\/|$)/
-
-function normalizePath(pathname: string) {
-  return pathname.replace(/^\/app(?=\/|$)/, "") || "/"
-}
-
-function redirectProfileRoute() {
-  const path = normalizePath(window.location.pathname)
-
-  if (PROFILE_PATH.test(path)) {
-    window.history.replaceState({}, "", "/app/settings/store")
-  }
-}
-
+/** Disabled while USE_NATIVE_MEDUSA_ADMIN_UI restores native profile settings route. */
 const HideProfileSettings = () => {
-  useLayoutEffect(() => {
-    redirectProfileRoute()
-
-    const sync = () => {
-      redirectProfileRoute()
-    }
-
-    window.addEventListener(SKREPAY_ROUTE_CHANGE_EVENT, sync)
-    window.addEventListener("popstate", sync)
-
-    return () => {
-      window.removeEventListener(SKREPAY_ROUTE_CHANGE_EVENT, sync)
-      window.removeEventListener("popstate", sync)
-    }
-  }, [])
+  if (isNativeMedusaAdminUiEnabled()) {
+    return null
+  }
 
   return null
 }

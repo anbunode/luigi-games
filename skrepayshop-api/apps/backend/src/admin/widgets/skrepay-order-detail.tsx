@@ -1,23 +1,13 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
-import { useLayoutEffect } from "react"
-import { useParams } from "react-router-dom"
-import { OrdersDetailChrome } from "../components/orders/OrdersDetailChrome"
-import { showOrdersLoadingOverlayIfNeeded } from "../lib/orders-loading-overlay"
-import { installOrdersUiBridge } from "../lib/orders-ui-bridge"
+import { isNativeMedusaAdminUiEnabled } from "../lib/native-admin-ui"
 
+/** Disabled while USE_NATIVE_MEDUSA_ADMIN_UI restores default Medusa order detail. */
 const SkrepayOrderDetailWidget = () => {
-  const { id } = useParams()
-
-  useLayoutEffect(() => {
-    showOrdersLoadingOverlayIfNeeded()
-    installOrdersUiBridge()
-  }, [id])
-
-  if (!id) {
+  if (isNativeMedusaAdminUiEnabled()) {
     return null
   }
 
-  return <OrdersDetailChrome orderId={id} />
+  return null
 }
 
 export const config = defineWidgetConfig({

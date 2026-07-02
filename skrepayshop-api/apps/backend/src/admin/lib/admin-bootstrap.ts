@@ -1,7 +1,13 @@
 import { installAuthBridge } from "./auth-bridge"
-import { showOrdersLoadingOverlayIfNeeded } from "./orders-loading-overlay"
+import {
+  cleanupSkrepayAdminVisualArtifacts,
+  isNativeMedusaAdminUiEnabled,
+} from "./native-admin-ui"
 
 if (typeof window !== "undefined") {
-  showOrdersLoadingOverlayIfNeeded()
+  if (isNativeMedusaAdminUiEnabled()) {
+    cleanupSkrepayAdminVisualArtifacts()
+  }
+
   installAuthBridge()
 }
