@@ -8,6 +8,7 @@ import {
   paymentStatusLabel,
 } from "../../lib/orders-api"
 import { clickNativeOrderAction } from "../../lib/orders-ui-bridge"
+import { scheduleHideOrdersLoadingOverlay } from "../../lib/orders-loading-overlay"
 import {
   enableSkrepayTheme,
   skrepayColors,
@@ -32,6 +33,7 @@ type OrdersDetailChromeProps = {
 export function OrdersDetailChrome({ orderId }: OrdersDetailChromeProps) {
   useLayoutEffect(() => {
     enableSkrepayTheme()
+    scheduleHideOrdersLoadingOverlay()
   }, [])
 
   const orderQuery = useQuery({

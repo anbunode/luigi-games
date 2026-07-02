@@ -2,10 +2,7 @@ import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { useLayoutEffect } from "react"
 import { useParams } from "react-router-dom"
 import { OrdersDetailChrome } from "../components/orders/OrdersDetailChrome"
-import {
-  showOrdersLoadingOverlay,
-  showOrdersLoadingOverlayIfNeeded,
-} from "../lib/orders-loading-overlay"
+import { showOrdersLoadingOverlayIfNeeded } from "../lib/orders-loading-overlay"
 import { installOrdersUiBridge } from "../lib/orders-ui-bridge"
 
 const SkrepayOrderDetailWidget = () => {
@@ -14,7 +11,6 @@ const SkrepayOrderDetailWidget = () => {
   useLayoutEffect(() => {
     showOrdersLoadingOverlayIfNeeded()
     installOrdersUiBridge()
-    showOrdersLoadingOverlay()
   }, [id])
 
   if (!id) {

@@ -9,9 +9,11 @@ export const ORDERS_LOADING_FLAG = "data-skrepay-orders-loading"
 export const ORDERS_LOADER_ID = "skrepay-orders-loader"
 
 const MIN_LOADING_MS = 1800
+const MAX_LOADING_MS = 6000
 
 let loadingShownAt = 0
 let hideTimer: ReturnType<typeof setTimeout> | null = null
+let safetyTimer: ReturnType<typeof setTimeout> | null = null
 let loaderStylesInstalled = false
 
 function ensureLoaderStyles() {
@@ -98,6 +100,13 @@ export function showOrdersLoadingOverlay() {
   if (!document.getElementById(ORDERS_LOADER_ID)) {
     document.body.appendChild(createOrdersLoader())
   }
+
+  if (!safetyTimer) {
+    safetyTimer = window.setTimeout(() => {
+      safetyTimer = null
+      scheduleHideOrdersLoadingOverlay()
+    }, MAX_LOADING_MS)
+  }
 }
 
 export function showOrdersLoadingOverlayIfNeeded() {
@@ -129,6 +138,11 @@ export function hideOrdersLoadingOverlayImmediately() {
     hideTimer = null
   }
 
+  if (safetyTimer) {
+    clearTimeout(safetyTimer)
+    safetyTimer = null
+  }
+
   document.body.removeAttribute(ORDERS_LOADING_FLAG)
   document.getElementById(ORDERS_LOADER_ID)?.remove()
 }
@@ -140,14 +154,13 @@ export function shouldShowOrdersLoadingOverlay() {
 
   const listShell = document.querySelector("[data-skrepay-orders-shell]")
   const detailShell = document.querySelector("[data-skrepay-order-detail-shell]")
-  const nativeHost = document.querySelector("[data-skrepay-orders-native-host]")
 
   if (isOrdersListPage(window.location.pathname)) {
-    return !listShell || !nativeHost
+    return !listShell
   }
 
   if (isOrderDetailPage(window.location.pathname)) {
-    return !detailShell || !nativeHost
+    return !detailShell
   }
 
   return false

@@ -65,15 +65,55 @@ function markHidden(element: HTMLElement) {
   element.setAttribute(NATIVE_HIDDEN, "true")
 }
 
+function containsNativeOrdersTable(element: HTMLElement): boolean {
+  return Boolean(
+    element.querySelector("table") ||
+      element.querySelector('[data-testid*="order"]') ||
+      element.querySelector('input[type="search"]')
+  )
+}
+
 function findNativeListHost(shell: HTMLElement): HTMLElement | null {
   const divide = shell.closest(".divide-y")
-  if (!divide) {
-    return null
+  if (divide) {
+    for (const child of Array.from(divide.children)) {
+      if (child instanceof HTMLElement && !child.contains(shell)) {
+        return child
+      }
+    }
   }
 
-  for (const child of Array.from(divide.children)) {
-    if (child instanceof HTMLElement && !child.contains(shell)) {
-      return child
+  let node: HTMLElement | null = shell.parentElement
+  while (node && node !== document.body) {
+    for (const child of Array.from(node.children)) {
+      if (
+        child instanceof HTMLElement &&
+        !child.contains(shell) &&
+        containsNativeOrdersTable(child)
+      ) {
+        return child
+      }
+    }
+
+    const next = node.nextElementSibling
+    if (
+      next instanceof HTMLElement &&
+      !next.contains(shell) &&
+      containsNativeOrdersTable(next)
+    ) {
+      return next
+    }
+
+    node = node.parentElement
+  }
+
+  const main = document.querySelector("main")
+  if (main) {
+    for (const table of main.querySelectorAll("table")) {
+      const host = table.closest("div")
+      if (host instanceof HTMLElement && !host.contains(shell)) {
+        return host
+      }
     }
   }
 
@@ -197,22 +237,6 @@ function wrapNativeHost(host: HTMLElement) {
   host.setAttribute("data-skrepay-orders-native-host", "true")
 }
 
-function ordersOverlayReady(): boolean {
-  const listShell = document.querySelector("[data-skrepay-orders-shell]")
-  const detailShell = document.querySelector("[data-skrepay-order-detail-shell]")
-  const nativeHost = document.querySelector("[data-skrepay-orders-native-host]")
-
-  if (isOrdersListPage(window.location.pathname)) {
-    return Boolean(listShell && nativeHost)
-  }
-
-  if (isOrderDetailPage(window.location.pathname)) {
-    return Boolean(detailShell && nativeHost)
-  }
-
-  return false
-}
-
 function syncOrdersListPage() {
   const path = window.location.pathname
 
@@ -229,9 +253,7 @@ function syncOrdersListPage() {
         hideNativeListChrome(host)
       }
       hideNativePageHeading()
-      if (ordersOverlayReady()) {
-        scheduleHideOrdersLoadingOverlay()
-      }
+      scheduleHideOrdersLoadingOverlay()
     }
 
     return
@@ -252,9 +274,7 @@ function syncOrdersListPage() {
         hideNativeDetailChrome(host)
       }
       hideNativePageHeading()
-      if (ordersOverlayReady()) {
-        scheduleHideOrdersLoadingOverlay()
-      }
+      scheduleHideOrdersLoadingOverlay()
     }
 
     return

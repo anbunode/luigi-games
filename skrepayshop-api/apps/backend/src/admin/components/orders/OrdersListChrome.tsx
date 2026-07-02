@@ -13,6 +13,7 @@ import {
   syncOrdersListFilters,
   syncOrdersPaymentFilter,
 } from "../../lib/orders-ui-bridge"
+import { scheduleHideOrdersLoadingOverlay } from "../../lib/orders-loading-overlay"
 import {
   enableSkrepayTheme,
   skrepayThemeCss,
@@ -26,6 +27,7 @@ import { SkrepayButton } from "./OrdersUi"
 export function OrdersListChrome() {
   useLayoutEffect(() => {
     enableSkrepayTheme()
+    scheduleHideOrdersLoadingOverlay()
   }, [])
 
   const [query, setQuery] = useState("")
