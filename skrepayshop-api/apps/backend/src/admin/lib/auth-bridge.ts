@@ -6,7 +6,12 @@ import { readLocalCurrencyTaxCheckbox } from "./store-edit-ui"
 import { formatRegionFormCurrencyOptions } from "./region-form-ui"
 import { isSettingsPage, isProductPricingPage, isRegionFormPage, isStoreEditPage, notifyRouteChange } from "./region-routes"
 import { installSettingsSidebarBridge } from "./settings-sidebar-bridge"
+import { installOrdersUiBridge } from "./orders-ui-bridge"
 import { showSettingsLoadingOverlay, shouldShowSettingsLoadingOverlay } from "./settings-loading-overlay"
+import {
+  showOrdersLoadingOverlay,
+  shouldShowOrdersLoadingOverlay,
+} from "./orders-loading-overlay"
 
 declare global {
   interface Window {
@@ -379,6 +384,9 @@ export function installAuthBridge() {
     if (shouldShowSettingsLoadingOverlay()) {
       showSettingsLoadingOverlay()
     }
+    if (shouldShowOrdersLoadingOverlay()) {
+      showOrdersLoadingOverlay()
+    }
     return result
   }) as History["pushState"]
 
@@ -393,6 +401,9 @@ export function installAuthBridge() {
     if (shouldShowSettingsLoadingOverlay()) {
       showSettingsLoadingOverlay()
     }
+    if (shouldShowOrdersLoadingOverlay()) {
+      showOrdersLoadingOverlay()
+    }
     return result
   }) as History["replaceState"]
 
@@ -400,8 +411,13 @@ export function installAuthBridge() {
   installRegionFormUiBridge()
   installStoreEditUiBridge()
   installSettingsSidebarBridge()
+  installOrdersUiBridge()
 
   if (isSettingsPage(window.location.pathname)) {
     showSettingsLoadingOverlay()
+  }
+
+  if (shouldShowOrdersLoadingOverlay()) {
+    showOrdersLoadingOverlay()
   }
 }

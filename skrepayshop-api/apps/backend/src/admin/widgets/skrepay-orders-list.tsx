@@ -1,40 +1,20 @@
 import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { useLayoutEffect } from "react"
-import { OrdersListPage } from "../components/orders/OrdersListPage"
-import { enableSkrepayTheme } from "../lib/skrepay-theme"
-
-function hideNativeOrderList(shell: HTMLElement) {
-  const divideHost = shell.closest(".divide-y")
-  if (!divideHost) {
-    return
-  }
-
-  for (const child of Array.from(divideHost.children)) {
-    if (!child.contains(shell)) {
-      ;(child as HTMLElement).style.setProperty("display", "none", "important")
-    }
-  }
-}
+import { OrdersListChrome } from "../components/orders/OrdersListChrome"
+import {
+  showOrdersLoadingOverlay,
+  showOrdersLoadingOverlayIfNeeded,
+} from "../lib/orders-loading-overlay"
+import { installOrdersUiBridge } from "../lib/orders-ui-bridge"
 
 const SkrepayOrdersListWidget = () => {
   useLayoutEffect(() => {
-    enableSkrepayTheme()
-
-    const apply = () => {
-      const shell = document.querySelector<HTMLElement>("[data-skrepay-orders-shell]")
-      if (shell) {
-        hideNativeOrderList(shell)
-      }
-    }
-
-    apply()
-    const observer = new MutationObserver(apply)
-    observer.observe(document.body, { childList: true, subtree: true })
-
-    return () => observer.disconnect()
+    showOrdersLoadingOverlayIfNeeded()
+    installOrdersUiBridge()
+    showOrdersLoadingOverlay()
   }, [])
 
-  return <OrdersListPage />
+  return <OrdersListChrome />
 }
 
 export const config = defineWidgetConfig({
